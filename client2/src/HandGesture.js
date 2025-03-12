@@ -17,26 +17,21 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     const THUMB_THRESHOLD = 0.05;
     const isRightHand = handedness === 'Right';
 
-    // Landmark indices for fingers
-    const INDEX_FINGER = { tip: 8, dip: 6 };
-    const MIDDLE_FINGER = { tip: 12, dip: 10 };
-    const THUMB = { tip: 4, dip: 3 };
+    const indexTip = landmarks[8];
+    const indexDip = landmarks[6];
+    const middleTip = landmarks[12];
+    const middleDip = landmarks[10];
+    const thumbTip = landmarks[4];
+    const thumbIp = landmarks[3];
 
-    // Finger extension checks
-    const indexExtended = landmarks[INDEX_FINGER.tip].y < 
-                         landmarks[INDEX_FINGER.dip].y - FINGER_THRESHOLD;
-    const middleExtended = landmarks[MIDDLE_FINGER.tip].y < 
-                          landmarks[MIDDLE_FINGER.dip].y - FINGER_THRESHOLD;
-    const thumbExtended = Math.abs(landmarks[THUMB.tip].x - 
-                         landmarks[THUMB.dip].x) > THUMB_THRESHOLD;
+    const indexExtended = indexTip.y < indexDip.y - FINGER_THRESHOLD;
+    const middleExtended = middleTip.y < middleDip.y - FINGER_THRESHOLD;
+    const thumbExtended = Math.abs(thumbTip.x - thumbIp.x) > THUMB_THRESHOLD;
 
-    // Count extended fingers
     let extendedFingers = 0;
     const fingers = [
-      { tip: 8, dip: 6 },  // Index
-      { tip: 12, dip: 10 }, // Middle
-      { tip: 16, dip: 14 }, // Ring
-      { tip: 20, dip: 18 }  // Pinky
+      { tip: 8, dip: 6 }, { tip: 12, dip: 10 },
+      { tip: 16, dip: 14 }, { tip: 20, dip: 18 }
     ];
     
     fingers.forEach(({ tip, dip }) => {
@@ -91,9 +86,11 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         const videoCtx = videoCanvasRef.current.getContext('2d');
         const drawCtx = drawingCanvasRef.current.getContext('2d');
         
-        // Clear canvases
         videoCtx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
-        videoCtx.drawImage(results.image, 0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
+        videoCtx.save();
+        videoCtx.scale(-1, 1); // Mirror the video feed
+        videoCtx.drawImage(results.image, -640, 0);
+        videoCtx.restore();
 
         if (results.multiHandLandmarks) {
           results.multiHandLandmarks.forEach((landmarks, index) => {
@@ -101,7 +98,6 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
             const { gesture, isRightHand } = detectGesture(landmarks, handedness);
 
             if(gesture === 'clear') {
-              videoCtx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
               drawCtx.clearRect(0, 0, drawingCanvasRef.current.width, drawingCanvasRef.current.height);
               prevCoords.current = null;
             }
@@ -111,7 +107,6 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
               processDrawing(landmarks, gesture, isRightHand);
             }
 
-            // Draw hand connections
             drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, {
               color: handedness === 'Right' ? '#00FF00' : '#FF0000',
               lineWidth: 2
@@ -136,13 +131,16 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     const canvas = drawingCanvasRef.current;
     if (!canvas) return;
 
-    // Get precise coordinates with mirror correction
+    // Get raw coordinates (0-1 range)
     const rawX = landmarks[8].x;
     const rawY = landmarks[8].y;
-    const correctedX = isRightHand ? (1 - rawX) : rawX;
-    
-    const currentX = correctedX * canvas.width;
-    const currentY = rawY * canvas.height;
+
+    // Convert to canvas pixels
+    let canvasX = rawX * canvas.width;
+    const canvasY = rawY * canvas.height;
+
+    // Mirror correction for right hand
+    if(isRightHand) canvasX = canvas.width - canvasX;
 
     const drawCtx = canvas.getContext('2d');
 
@@ -151,16 +149,16 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         animationFrameRef.current = requestAnimationFrame(() => {
           if (!prevCoords.current) {
             // Start new path at exact finger position
-            prevCoords.current = { x: currentX, y: currentY };
+            prevCoords.current = { x: canvasX, y: canvasY };
             drawCtx.beginPath();
-            drawCtx.moveTo(currentX, currentY);
+            drawCtx.moveTo(canvasX, canvasY);
             drawCtx.strokeStyle = "#FF0000";
             drawCtx.lineWidth = 3;
             return;
           }
 
-          // Draw smooth line
-          drawCtx.lineTo(currentX, currentY);
+          // Draw line to current position
+          drawCtx.lineTo(canvasX, canvasY);
           drawCtx.stroke();
 
           // Emit drawing data
@@ -169,23 +167,20 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
             senderId: localId,
             prevX: prevCoords.current.x,
             prevY: prevCoords.current.y,
-            x: currentX,
-            y: currentY,
+            x: canvasX,
+            y: canvasY,
             color: "#FF0000",
             lineWidth: 3,
             handGesture: true
           });
 
-          prevCoords.current = { x: currentX, y: currentY };
+          prevCoords.current = { x: canvasX, y: canvasY };
         });
         break;
 
       case 'stop':
-        // Properly end the current path
-        if (prevCoords.current) {
-          drawCtx.closePath();
-          prevCoords.current = null;
-        }
+        drawCtx.closePath();
+        prevCoords.current = null;
         break;
 
       default:
@@ -197,8 +192,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     <div style={{ 
       position: 'relative', 
       width: '640px', 
-      height: '480px',
-      transform: 'scaleX(-1)'
+      height: '480px'
     }}>
       <video ref={videoRef} style={{ display: 'none' }} />
       <canvas
@@ -209,8 +203,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
           position: 'absolute', 
           top: 0, 
           left: 0, 
-          zIndex: 1,
-          transform: 'scaleX(-1)'
+          zIndex: 1
         }}
       />
       <canvas
