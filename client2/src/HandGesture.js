@@ -5,22 +5,17 @@ import * as drawingUtils from '@mediapipe/drawing_utils';
 import * as cam from '@mediapipe/camera_utils';
 
 function HandGesture({ onGestureDetected, socket, roomId, localId }) {
-  const videoRef = useRef(null);
-  const videoCanvasRef = useRef(null);
-  const drawingCanvasRef = useRef(null);
-  const prevCoords = useRef(null);
-  const animationFrameRef = useRef(null);
-  const abortController = useRef(new AbortController());
+  // ... (keep previous refs and state)
 
-  // Improved gesture detection with right-hand support
+  // Corrected gesture detection with proper right-hand handling
   const detectGesture = useCallback((landmarks, handedness) => {
     const FINGER_THRESHOLD = 0.07;
     const THUMB_THRESHOLD = 0.05;
 
-    // Flip X coordinate for right hand to correct mirror effect
-    const flipX = handedness === 'Right';
-
-    // Finger landmarks (improved accuracy)
+    // Correct hand detection logic
+    const isRightHand = handedness === 'Right';
+    
+    // Get landmarks with proper hand orientation
     const indexTip = landmarks[8];
     const indexDip = landmarks[6];
     const thumbTip = landmarks[4];
@@ -43,101 +38,23 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
       gesture = 'clear';
     }
 
-    return { gesture, flipX };
+    return { gesture, isRightHand };
   }, []);
 
-  useEffect(() => {
-    const initHandTracking = async () => {
-      if (!videoRef.current) return;
-
-      const hands = new Hands({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-      });
-
-      hands.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.8,
-        minTrackingConfidence: 0.8,
-      });
-
-      const camera = new cam.Camera(videoRef.current, {
-        onFrame: async () => {
-          if (abortController.current.signal.aborted) return;
-          try {
-            await hands.send({ image: videoRef.current });
-          } catch (err) {
-            if (!err.message.includes('aborted')) {
-              console.error('Error sending frame:', err);
-            }
-          }
-        },
-        width: 640,
-        height: 480
-      });
-
-      hands.onResults((results) => {
-        if (!videoCanvasRef.current || !drawingCanvasRef.current) return;
-
-        const videoCtx = videoCanvasRef.current.getContext('2d');
-        const drawCtx = drawingCanvasRef.current.getContext('2d');
-        
-        // Clear both canvases
-        videoCtx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
-        videoCtx.drawImage(results.image, 0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
-
-        // Clear drawing canvas when not drawing
-        if(!results.multiHandLandmarks?.length) {
-          drawCtx.clearRect(0, 0, drawingCanvasRef.current.width, drawingCanvasRef.current.height);
-        }
-
-        if (results.multiHandLandmarks) {
-          results.multiHandLandmarks.forEach((landmarks, index) => {
-            const handedness = results.multiHandedness[index].label;
-            const { gesture, flipX } = detectGesture(landmarks, handedness);
-
-            if(gesture === 'clear') {
-              drawCtx.clearRect(0, 0, drawingCanvasRef.current.width, drawingCanvasRef.current.height);
-            }
-
-            if(gesture) {
-              onGestureDetected?.(gesture);
-              processDrawing(landmarks, gesture, flipX, handedness);
-            }
-
-            drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, 
-              { color: handedness === 'Right' ? '#00FF00' : '#FF0000', lineWidth: 2 });
-          });
-        }
-      });
-
-      camera.start();
-      return () => {
-        abortController.current.abort();
-        camera.stop();
-        hands.close();
-        cancelAnimationFrame(animationFrameRef.current);
-      };
-    };
-
-    initHandTracking();
-  }, [onGestureDetected, detectGesture]);
-
-  // Improved drawing with precise coordinates
-  const processDrawing = useCallback((landmarks, gesture, flipX, handedness) => {
+  // Corrected drawing processing
+  const processDrawing = useCallback((landmarks, gesture, isRightHand) => {
     const canvas = drawingCanvasRef.current;
     if (!canvas) return;
 
-    // Get precise index finger coordinates
-    const indexX = flipX ? 
-      (1 - landmarks[8].x) * canvas.width : // Flip X for right hand
-      landmarks[8].x * canvas.width;
-      
-    const indexY = landmarks[8].y * canvas.height;
-
-    // Adjust for camera offset (if needed)
-    const adjustedX = indexX;
-    const adjustedY = indexY;
+    // Get proper coordinates based on hand type
+    const rawX = landmarks[8].x;
+    const rawY = landmarks[8].y;
+    
+    // Correct mirroring for right hand
+    const correctedX = isRightHand ? (1 - rawX) : rawX;
+    
+    const indexX = correctedX * canvas.width;
+    const indexY = rawY * canvas.height;
 
     if (gesture === 'draw') {
       animationFrameRef.current = requestAnimationFrame(() => {
@@ -145,7 +62,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         if (prevCoords.current) {
           drawCtx.beginPath();
           drawCtx.moveTo(prevCoords.current.x, prevCoords.current.y);
-          drawCtx.lineTo(adjustedX, adjustedY);
+          drawCtx.lineTo(indexX, indexY);
           drawCtx.strokeStyle = "#FF0000";
           drawCtx.lineWidth = 3;
           drawCtx.stroke();
@@ -155,15 +72,20 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
             senderId: localId,
             prevX: prevCoords.current.x,
             prevY: prevCoords.current.y,
-            x: adjustedX,
-            y: adjustedY,
+            x: indexX,
+            y: indexY,
             color: "#FF0000",
             lineWidth: 3,
             handGesture: true
           });
         }
-        prevCoords.current = { x: adjustedX, y: adjustedY };
+        prevCoords.current = { x: indexX, y: indexY };
       });
+    } else if (gesture === 'clear') {
+      const videoCtx = videoCanvasRef.current.getContext('2d');
+      videoCtx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
+      canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+      prevCoords.current = null;
     } else {
       prevCoords.current = null;
     }
@@ -174,7 +96,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
       position: 'relative', 
       width: '640px', 
       height: '480px',
-      transform: 'scaleX(-1)' // Mirror the display
+      transform: 'scaleX(-1)' // Mirror only the container
     }}>
       <video ref={videoRef} style={{ display: 'none' }} />
       <canvas
@@ -198,8 +120,8 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
           top: 0, 
           left: 0, 
           zIndex: 2, 
-          pointerEvents: 'none',
-          transform: 'scaleX(-1)' // Match mirror for drawing
+          pointerEvents: 'none'
+          // No transform here - drawing canvas remains unmirrored
         }}
       />
     </div>
