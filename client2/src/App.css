@@ -28,6 +28,12 @@
   color: #61dafb;
 }
 
+canvas {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 4/3;
+} 
+
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
