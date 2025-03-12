@@ -28,8 +28,9 @@ io.on('connection', (socket) => {
 
   // Listen for drawing data and broadcast to others in the same room
   socket.on('draw', (data) => {
-    io.in(data.roomId).emit('draw', data);
-  });  
+    socket.broadcast.to(data.roomId).emit('draw', data);
+  });
+   
 
   // Listen for chat messages and broadcast to others in the same room
   socket.on('chatMessage', (msgData) => {
