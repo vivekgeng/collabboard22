@@ -3,12 +3,13 @@ import React, { useRef, useState, useEffect } from 'react';
 function Whiteboard({ socket, roomId }) {
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
+  const prevCoords = useRef(null); // Use a separate ref to track previous coordinates
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    // Set canvas size to match HandGesture (640x480)
+    // Set canvas dimensions
     canvas.width = 640;
     canvas.height = 480;
     const context = canvas.getContext('2d');
@@ -17,7 +18,7 @@ function Whiteboard({ socket, roomId }) {
     context.lineWidth = lineWidth;
     contextRef.current = context;
 
-    // Listen for draw events from other clients
+    // Listen for incoming draw events from other clients
     socket.on('draw', (data) => {
       drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);
     });
@@ -33,7 +34,7 @@ function Whiteboard({ socket, roomId }) {
     };
   }, [socket]);
 
-  // Update stroke style when color or lineWidth changes
+  // Update the local drawing settings when color or lineWidth changes
   useEffect(() => {
     if (contextRef.current) {
       contextRef.current.strokeStyle = color;
@@ -41,20 +42,20 @@ function Whiteboard({ socket, roomId }) {
     }
   }, [color, lineWidth]);
 
-  // Local drawing functions for mouse-based drawing
+  // Start drawing: initialize the previous coordinates using a ref
   const startDrawing = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const context = contextRef.current;
-    context.beginPath();
-    context.moveTo(x, y);
-    context.prevX = x;
-    context.prevY = y;
+    contextRef.current.beginPath();
+    contextRef.current.moveTo(x, y);
+    prevCoords.current = { x, y };
   };
 
+  // While drawing: draw on the canvas and emit the drawing event
   const draw = (e) => {
+    if (!prevCoords.current) return; // Do nothing if drawing hasn't started
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -63,25 +64,30 @@ function Whiteboard({ socket, roomId }) {
     context.lineTo(x, y);
     context.stroke();
 
-    // Emit the draw event so that others can see the line
+    // Emit drawing data to other clients in the room
     socket.emit('draw', {
       roomId,
-      prevX: context.prevX,
-      prevY: context.prevY,
-      x: x,
-      y: y,
+      prevX: prevCoords.current.x,
+      prevY: prevCoords.current.y,
+      x,
+      y,
       color,
       lineWidth
     });
-    context.prevX = x;
-    context.prevY = y;
+
+    // Update previous coordinates for the next segment
+    prevCoords.current = { x, y };
   };
 
+  // End drawing: clear the previous coordinate ref and close the path
   const endDrawing = () => {
-    contextRef.current.closePath();
+    if (contextRef.current) {
+      contextRef.current.closePath();
+    }
+    prevCoords.current = null;
   };
 
-  // Function to draw incoming lines from remote events
+  // Function to draw lines based on incoming socket data
   const drawLine = (prevX, prevY, x, y, strokeColor, strokeWidth) => {
     const context = contextRef.current;
     if (!context) return;
@@ -96,7 +102,7 @@ function Whiteboard({ socket, roomId }) {
     context.restore();
   };
 
-  // Function to clear the canvas
+  // Clear the canvas locally (and note that your server emits clear events as well)
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -119,7 +125,7 @@ function Whiteboard({ socket, roomId }) {
           min="1"
           max="10"
           value={lineWidth}
-          onChange={(e) => setLineWidth(e.target.value)}
+          onChange={(e) => setLineWidth(Number(e.target.value))}
         />
       </div>
       <canvas
