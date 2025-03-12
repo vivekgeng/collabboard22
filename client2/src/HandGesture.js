@@ -12,31 +12,42 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
   const animationFrameRef = useRef(null);
   const abortController = useRef(new AbortController());
 
-  // Improved gesture detection with accurate right-hand handling
   const detectGesture = useCallback((landmarks, handedness) => {
     const FINGER_THRESHOLD = 0.07;
     const THUMB_THRESHOLD = 0.05;
     const isRightHand = handedness === 'Right';
 
-    // Finger landmarks with improved accuracy
-    const indexTip = landmarks[8];
-    const indexDip = landmarks[6];
-    const thumbTip = landmarks[4];
-    const thumbIp = landmarks[3];
+    // Landmark indices for fingers
+    const INDEX_FINGER = { tip: 8, dip: 6 };
+    const MIDDLE_FINGER = { tip: 12, dip: 10 };
+    const THUMB = { tip: 4, dip: 3 };
 
     // Finger extension checks
-    const indexExtended = indexTip.y < indexDip.y - FINGER_THRESHOLD;
-    const thumbExtended = Math.abs(thumbTip.x - thumbIp.x) > THUMB_THRESHOLD;
+    const indexExtended = landmarks[INDEX_FINGER.tip].y < 
+                         landmarks[INDEX_FINGER.dip].y - FINGER_THRESHOLD;
+    const middleExtended = landmarks[MIDDLE_FINGER.tip].y < 
+                          landmarks[MIDDLE_FINGER.dip].y - FINGER_THRESHOLD;
+    const thumbExtended = Math.abs(landmarks[THUMB.tip].x - 
+                         landmarks[THUMB.dip].x) > THUMB_THRESHOLD;
 
-    // Count extended fingers (excluding thumb)
+    // Count extended fingers
     let extendedFingers = 0;
-    for(let i = 8; i <= 20; i += 4) {
-      if(landmarks[i].y < landmarks[i-2].y - FINGER_THRESHOLD) extendedFingers++;
-    }
+    const fingers = [
+      { tip: 8, dip: 6 },  // Index
+      { tip: 12, dip: 10 }, // Middle
+      { tip: 16, dip: 14 }, // Ring
+      { tip: 20, dip: 18 }  // Pinky
+    ];
+    
+    fingers.forEach(({ tip, dip }) => {
+      if(landmarks[tip].y < landmarks[dip].y - FINGER_THRESHOLD) extendedFingers++;
+    });
 
     let gesture = '';
     if(extendedFingers === 1 && indexExtended && !thumbExtended) {
       gesture = 'draw';
+    } else if(extendedFingers === 2 && indexExtended && middleExtended) {
+      gesture = 'stop';
     } else if(extendedFingers === 0 && thumbExtended) {
       gesture = 'clear';
     }
@@ -121,7 +132,6 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     initHandTracking();
   }, [onGestureDetected, detectGesture]);
 
-  // Corrected drawing logic with proper right-hand handling
   const processDrawing = useCallback((landmarks, gesture, isRightHand) => {
     const canvas = drawingCanvasRef.current;
     if (!canvas) return;
@@ -131,19 +141,26 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     const rawY = landmarks[8].y;
     const correctedX = isRightHand ? (1 - rawX) : rawX;
     
-    const indexX = correctedX * canvas.width;
-    const indexY = rawY * canvas.height;
+    const currentX = correctedX * canvas.width;
+    const currentY = rawY * canvas.height;
 
-    if (gesture === 'draw') {
-      animationFrameRef.current = requestAnimationFrame(() => {
-        const drawCtx = canvas.getContext('2d');
-        if (prevCoords.current) {
+    const drawCtx = canvas.getContext('2d');
+
+    switch(gesture) {
+      case 'draw':
+        animationFrameRef.current = requestAnimationFrame(() => {
+          if (!prevCoords.current) {
+            // Start new path at exact finger position
+            prevCoords.current = { x: currentX, y: currentY };
+            drawCtx.beginPath();
+            drawCtx.moveTo(currentX, currentY);
+            drawCtx.strokeStyle = "#FF0000";
+            drawCtx.lineWidth = 3;
+            return;
+          }
+
           // Draw smooth line
-          drawCtx.beginPath();
-          drawCtx.moveTo(prevCoords.current.x, prevCoords.current.y);
-          drawCtx.lineTo(indexX, indexY);
-          drawCtx.strokeStyle = "#FF0000";
-          drawCtx.lineWidth = 3;
+          drawCtx.lineTo(currentX, currentY);
           drawCtx.stroke();
 
           // Emit drawing data
@@ -152,17 +169,27 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
             senderId: localId,
             prevX: prevCoords.current.x,
             prevY: prevCoords.current.y,
-            x: indexX,
-            y: indexY,
+            x: currentX,
+            y: currentY,
             color: "#FF0000",
             lineWidth: 3,
             handGesture: true
           });
+
+          prevCoords.current = { x: currentX, y: currentY };
+        });
+        break;
+
+      case 'stop':
+        // Properly end the current path
+        if (prevCoords.current) {
+          drawCtx.closePath();
+          prevCoords.current = null;
         }
-        prevCoords.current = { x: indexX, y: indexY };
-      });
-    } else {
-      prevCoords.current = null;
+        break;
+
+      default:
+        prevCoords.current = null;
     }
   }, [socket, roomId, localId]);
 
@@ -171,7 +198,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
       position: 'relative', 
       width: '640px', 
       height: '480px',
-      transform: 'scaleX(-1)' // Mirror only the container
+      transform: 'scaleX(-1)'
     }}>
       <video ref={videoRef} style={{ display: 'none' }} />
       <canvas
@@ -183,7 +210,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
           top: 0, 
           left: 0, 
           zIndex: 1,
-          transform: 'scaleX(-1)' // Mirror the camera feed
+          transform: 'scaleX(-1)'
         }}
       />
       <canvas
@@ -195,7 +222,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
           top: 0, 
           left: 0, 
           zIndex: 2, 
-          pointerEvents: 'none' // Drawing canvas remains unmirrored
+          pointerEvents: 'none'
         }}
       />
     </div>
