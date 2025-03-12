@@ -149,6 +149,7 @@ function Whiteboard({ socket, roomId, localId }) {
           Clear
         </button>
       </div>
+      
       <canvas
         ref={canvasRef}
         style={styles.canvas}
@@ -159,6 +160,15 @@ function Whiteboard({ socket, roomId, localId }) {
         aria-label="Collaborative whiteboard"
         role="img"
       />
+
+      {/* AI Answers Box */}
+      <div style={styles.aiContainer}>
+        <div style={styles.aiHeader}>AI Answers</div>
+        <div style={styles.aiContent}>
+          {/* AI responses will be displayed here */}
+          <p style={styles.placeholderText}>AI-generated answers will appear here...</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -169,7 +179,8 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     borderRight: '1px solid #ccc',
-    position: 'relative'
+    position: 'relative',
+    height: '100vh'
   },
   tools: {
     padding: '10px',
@@ -183,9 +194,9 @@ const styles = {
     background: '#ffffff',
     cursor: 'crosshair',
     touchAction: 'none',
-    width: '100%',
-    height: 'auto',
-    aspectRatio: '4/3' // Maintain correct aspect ratio
+    flex: 1,
+    minHeight: 0,
+    aspectRatio: '4/3'
   },
   clearButton: {
     padding: '8px 16px',
@@ -199,6 +210,32 @@ const styles = {
     ':hover': {
       opacity: 0.8
     }
+  },
+  aiContainer: {
+    borderTop: '2px solid #4F81E1',
+    backgroundColor: '#f8f9fa',
+    height: '150px',
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  aiHeader: {
+    backgroundColor: '#4F81E1',
+    color: 'white',
+    padding: '10px',
+    fontWeight: 'bold',
+    fontSize: '1.1rem'
+  },
+  aiContent: {
+    flex: 1,
+    padding: '15px',
+    overflowY: 'auto',
+    fontSize: '0.9rem',
+    lineHeight: '1.5'
+  },
+  placeholderText: {
+    color: '#666',
+    fontStyle: 'italic',
+    margin: 0
   }
 };
 
