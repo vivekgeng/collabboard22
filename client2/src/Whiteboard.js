@@ -55,7 +55,7 @@ function Whiteboard({ socket, roomId }) {
 
   // While drawing: draw on the canvas and emit the drawing event
   const draw = (e) => {
-    if (!prevCoords.current) return; // Do nothing if drawing hasn't started
+    if (!prevCoords.current) return;
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -102,12 +102,19 @@ function Whiteboard({ socket, roomId }) {
     context.restore();
   };
 
-  // Clear the canvas locally (and note that your server emits clear events as well)
+  // Clear the canvas locally and emit a clear event
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const handleClear = () => {
+    // Clear the local canvas
+    clearCanvas();
+    // Emit clearCanvas event to other clients in the room
+    socket.emit('clearCanvas', { roomId });
   };
 
   return (
@@ -127,6 +134,10 @@ function Whiteboard({ socket, roomId }) {
           value={lineWidth}
           onChange={(e) => setLineWidth(Number(e.target.value))}
         />
+        {/* Clear button added next to the line width */}
+        <button onClick={handleClear} style={styles.clearButton}>
+          Clear
+        </button>
       </div>
       <canvas
         ref={canvasRef}
@@ -157,6 +168,15 @@ const styles = {
     flex: 1,
     background: '#ffffff',
     cursor: 'crosshair'
+  },
+  clearButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    backgroundColor: '#dc3545',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px'
   }
 };
 
