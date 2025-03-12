@@ -17,7 +17,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
     hands.setOptions({
-      maxNumHands: 2, // Enable detecting two hands
+      maxNumHands: 2, // Detect up to two hands
       modelComplexity: 1,
       minDetectionConfidence: 0.7,
       minTrackingConfidence: 0.7,
@@ -39,7 +39,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     camera.start();
 
     function onResults(results) {
-      // Debug: log handedness data to see how it's provided
+      // Log handedness for debugging
       console.log('multiHandedness:', results.multiHandedness);
 
       if (videoCanvasRef.current) {
@@ -49,15 +49,15 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         videoCtx.drawImage(results.image, 0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
 
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-          // Try to select the right hand by checking each handedness object.
+          // Select the right hand if available, else default to the first hand
           let handIndex = 0;
+          let isRightHand = false;
           if (results.multiHandedness && results.multiHandedness.length > 0) {
             const rightHandIndex = results.multiHandedness.findIndex((hand) => {
-              // Check if hand.label exists and equals "Right"
+              // Check if hand.label exists and equals "Right" or if classification is provided
               if (hand.label) {
                 return hand.label === "Right";
               }
-              // If not, check if classification exists
               if (hand.classification && hand.classification[0] && hand.classification[0].label) {
                 return hand.classification[0].label === "Right";
               }
@@ -65,22 +65,21 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
             });
             if (rightHandIndex !== -1) {
               handIndex = rightHandIndex;
+              isRightHand = true;
             }
           }
 
           const landmarks = results.multiHandLandmarks[handIndex];
+          const canvasWidth = videoCanvasRef.current.width;
+          const canvasHeight = videoCanvasRef.current.height;
 
-          // Simple heuristic for gesture detection using extended fingers
+          // Simple heuristic for gesture detection
           let extendedFingers = 0;
           if (landmarks[8].y < landmarks[6].y) extendedFingers++; // index finger
           if (landmarks[12].y < landmarks[10].y) extendedFingers++; // middle finger
           if (landmarks[16].y < landmarks[14].y) extendedFingers++; // ring finger
           if (landmarks[20].y < landmarks[18].y) extendedFingers++; // pinky
-          let thumbExtended = false;
-          // Sometimes thumb may be detected differently; adjust the heuristic if needed.
-          if (landmarks[4].x < landmarks[3].x) {
-            thumbExtended = true;
-          }
+          let thumbExtended = landmarks[4].x < landmarks[3].x; // basic heuristic
 
           let gesture = '';
           if (extendedFingers === 1 && !thumbExtended) {
@@ -94,13 +93,19 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
           }
           onGestureDetected && onGestureDetected(gesture);
 
-          // Draw hand landmarks on video canvas for debugging
+          // Draw landmarks for debugging
           drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
           drawingUtils.drawLandmarks(videoCtx, landmarks, { color: '#FF0000', lineWidth: 1 });
 
+          // Calculate the index finger tip position
+          // For right hand, mirror the x coordinate
+          let indexX = landmarks[8].x * canvasWidth;
+          if (isRightHand) {
+            indexX = canvasWidth - indexX;
+          }
+          const indexY = landmarks[8].y * canvasHeight;
+
           // Process drawing if gesture is "draw"
-          const indexX = landmarks[8].x * videoCanvasRef.current.width;
-          const indexY = landmarks[8].y * videoCanvasRef.current.height;
           if (gesture === 'draw') {
             if (drawingCanvasRef.current) {
               const drawCtx = drawingCanvasRef.current.getContext('2d');
@@ -111,7 +116,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
                 drawCtx.strokeStyle = "#FF0000";
                 drawCtx.lineWidth = 3;
                 drawCtx.stroke();
-                // Emit the drawing event with handGesture flag true
+                // Emit drawing event with handGesture flag true
                 if (socket) {
                   socket.emit('draw', {
                     roomId,
