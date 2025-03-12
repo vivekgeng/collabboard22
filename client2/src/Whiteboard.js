@@ -3,15 +3,19 @@ import React, { useRef, useState, useEffect } from 'react';
 function Whiteboard({ socket, roomId }) {
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
-  const prevCoords = useRef(null); // Use a separate ref to track previous coordinates
+  const prevCoords = useRef(null); // For tracking previous coordinates
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    // Set canvas dimensions
+    // Set canvas drawing buffer dimensions
     canvas.width = 640;
     canvas.height = 480;
+    // Also set CSS dimensions to match exactly
+    canvas.style.width = '640px';
+    canvas.style.height = '480px';
+
     const context = canvas.getContext('2d');
     context.lineCap = 'round';
     context.strokeStyle = color;
@@ -34,7 +38,7 @@ function Whiteboard({ socket, roomId }) {
     };
   }, [socket]);
 
-  // Update the local drawing settings when color or lineWidth changes
+  // Update local drawing settings when color or lineWidth changes
   useEffect(() => {
     if (contextRef.current) {
       contextRef.current.strokeStyle = color;
@@ -42,24 +46,20 @@ function Whiteboard({ socket, roomId }) {
     }
   }, [color, lineWidth]);
 
-  // Start drawing: initialize the previous coordinates using a ref
+  // Start drawing: initialize previous coordinates using offsetX/Y
   const startDrawing = (e) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = e.nativeEvent.offsetX;
+    const y = e.nativeEvent.offsetY;
     contextRef.current.beginPath();
     contextRef.current.moveTo(x, y);
     prevCoords.current = { x, y };
   };
 
-  // While drawing: draw on the canvas and emit the drawing event
+  // Draw on the canvas and emit the drawing event using offsetX/Y
   const draw = (e) => {
     if (!prevCoords.current) return;
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = e.nativeEvent.offsetX;
+    const y = e.nativeEvent.offsetY;
     const context = contextRef.current;
     context.lineTo(x, y);
     context.stroke();
@@ -75,11 +75,11 @@ function Whiteboard({ socket, roomId }) {
       lineWidth
     });
 
-    // Update previous coordinates for the next segment
+    // Update previous coordinates
     prevCoords.current = { x, y };
   };
 
-  // End drawing: clear the previous coordinate ref and close the path
+  // End drawing by clearing previous coordinates and closing the path
   const endDrawing = () => {
     if (contextRef.current) {
       contextRef.current.closePath();
@@ -87,7 +87,7 @@ function Whiteboard({ socket, roomId }) {
     prevCoords.current = null;
   };
 
-  // Function to draw lines based on incoming socket data
+  // Function to draw lines from incoming data
   const drawLine = (prevX, prevY, x, y, strokeColor, strokeWidth) => {
     const context = contextRef.current;
     if (!context) return;
@@ -102,7 +102,7 @@ function Whiteboard({ socket, roomId }) {
     context.restore();
   };
 
-  // Clear the canvas locally and emit a clear event
+  // Clear the canvas locally
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -111,9 +111,7 @@ function Whiteboard({ socket, roomId }) {
   };
 
   const handleClear = () => {
-    // Clear the local canvas
     clearCanvas();
-    // Emit clearCanvas event to other clients in the room
     socket.emit('clearCanvas', { roomId });
   };
 
@@ -134,7 +132,6 @@ function Whiteboard({ socket, roomId }) {
           value={lineWidth}
           onChange={(e) => setLineWidth(Number(e.target.value))}
         />
-        {/* Clear button added next to the line width */}
         <button onClick={handleClear} style={styles.clearButton}>
           Clear
         </button>
@@ -165,7 +162,6 @@ const styles = {
     gap: '10px'
   },
   canvas: {
-    flex: 1,
     background: '#ffffff',
     cursor: 'crosshair'
   },
