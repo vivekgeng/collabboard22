@@ -63,11 +63,16 @@ function Room() {
     setHandGestureMode(prev => !prev);
   }, []);
 
-  // Now, we no longer check for a "disable" gesture here.
+  // When a gesture is detected from hand tracking:
+  // - If the gesture is 'clear', we emit a clearCanvas event.
+  // - If the gesture is 'disable', we automatically disable hand gesture mode.
   const handleGesture = useCallback((gesture) => {
     setGestureStatus(gesture);
     if (gesture === 'clear' && socket) {
       socket.emit('clearCanvas', { roomId, senderId: localId });
+    }
+    if (gesture === 'disable') {
+      setHandGestureMode(false);
     }
   }, [socket, roomId, localId]);
 
@@ -142,22 +147,132 @@ function Room() {
 }
 
 const styles = {
-  container: { display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#f8f9fa' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', backgroundColor: '#ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100 },
-  title: { fontSize: '1.5rem', margin: 0, color: '#2c3e50' },
-  buttonGroup: { display: 'flex', gap: '1rem' },
-  handGestureButton: { backgroundColor: '#28a745', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' },
-  activeGestureButton: { backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' },
-  leaveButton: { backgroundColor: '#4F81E1', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' },
-  mainContent: { flex: 1, display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', padding: '1rem' },
-  whiteboardSection: { position: 'relative', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'hidden' },
-  gestureSection: { display: 'flex', flexDirection: 'column', gap: '1rem', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', padding: '1rem' },
-  chatSection: { backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'hidden' },
-  gestureStatus: { padding: '0.5rem', backgroundColor: '#e9ecef', borderRadius: '4px', textAlign: 'center', fontSize: '0.9rem' },
-  loadingContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: '1rem' },
-  spinner: { width: '50px', height: '50px', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', borderRadius: '50%', animation: 'spin 1s linear infinite' },
-  errorContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: '1rem', textAlign: 'center' },
-  retryButton: { padding: '0.5rem 1rem', backgroundColor: '#4F81E1', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+    backgroundColor: '#f8f9fa'
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1rem 2rem',
+    backgroundColor: '#ffffff',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    zIndex: 100
+  },
+  title: {
+    fontSize: '1.5rem',
+    margin: 0,
+    color: '#2c3e50'
+  },
+  buttonGroup: {
+    display: 'flex',
+    gap: '1rem'
+  },
+  handGestureButton: {
+    backgroundColor: '#28a745',
+    color: 'white',
+    border: 'none',
+    padding: '0.5rem 1rem',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem'
+  },
+  activeGestureButton: {
+    backgroundColor: '#dc3545',
+    color: 'white',
+    border: 'none',
+    padding: '0.5rem 1rem',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem'
+  },
+  leaveButton: {
+    backgroundColor: '#4F81E1',
+    color: 'white',
+    border: 'none',
+    padding: '0.5rem 1rem',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem'
+  },
+  mainContent: {
+    flex: 1,
+    display: 'grid',
+    gridTemplateColumns: '2fr 1fr',
+    gap: '1rem',
+    padding: '1rem'
+  },
+  whiteboardSection: {
+    position: 'relative',
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    overflow: 'hidden'
+  },
+  gestureSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    padding: '1rem'
+  },
+  chatSection: {
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    overflow: 'hidden'
+  },
+  gestureStatus: {
+    padding: '0.5rem',
+    backgroundColor: '#e9ecef',
+    borderRadius: '4px',
+    textAlign: 'center',
+    fontSize: '0.9rem'
+  },
+  loadingContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100vh',
+    gap: '1rem'
+  },
+  spinner: {
+    width: '50px',
+    height: '50px',
+    border: '4px solid #f3f3f3',
+    borderTop: '4px solid #3498db',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite'
+  },
+  errorContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100vh',
+    gap: '1rem',
+    textAlign: 'center'
+  },
+  retryButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#4F81E1',
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer'
+  }
 };
 
 export default React.memo(Room);

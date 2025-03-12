@@ -12,7 +12,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
   const animationFrameRef = useRef(null);
   const abortController = useRef(new AbortController());
 
-  // Gesture detection function without three-finger disable
+  // Gesture detection function – returns 'draw', 'stop', 'clear', or 'disable'
   const detectGesture = useCallback((landmarks, handedness) => {
     const FINGER_THRESHOLD = 0.07;
     const THUMB_THRESHOLD = 0.05;
@@ -30,7 +30,10 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     });
     const thumbExtended = Math.abs(landmarks[4].x - landmarks[3].x) > THUMB_THRESHOLD;
     let gesture = '';
-    if (extendedFingers === 1 && !thumbExtended) {
+    // New: if exactly three fingers (excluding thumb) are extended, set gesture to 'disable'
+    if (extendedFingers === 3) {
+      gesture = 'disable';
+    } else if (extendedFingers === 1 && !thumbExtended) {
       gesture = 'draw';
     } else if (extendedFingers === 2) {
       gesture = 'stop';
@@ -76,7 +79,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         const videoCtx = videoCanvasRef.current.getContext('2d');
         const drawCtx = drawingCanvasRef.current.getContext('2d');
         
-        // Draw mirrored video feed on video canvas
+        // Draw mirrored video feed
         videoCtx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
         videoCtx.save();
         videoCtx.scale(-1, 1);
@@ -98,7 +101,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
               processDrawing(landmarks, gesture);
             }
 
-            // Draw hand landmarks on video canvas for debugging
+            // Draw hand landmarks for debugging
             drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, {
               color: handedness === 'Right' ? '#00FF00' : '#FF0000',
               lineWidth: 2
@@ -119,16 +122,16 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     initHandTracking();
   }, [onGestureDetected, detectGesture]);
 
-  // Process drawing events, mirroring the x-coordinate for alignment
+  // Process drawing: mirror the x-coordinate so drawing aligns with the mirrored video feed
   const processDrawing = useCallback((landmarks, gesture) => {
     const canvas = drawingCanvasRef.current;
     if (!canvas) return;
     const rawX = landmarks[8].x;
     const rawY = landmarks[8].y;
-    const canvasX = canvas.width - (rawX * canvas.width); // Mirror x-coordinate
+    const canvasX = canvas.width - (rawX * canvas.width); // mirror x
     const canvasY = rawY * canvas.height;
     const drawCtx = canvas.getContext('2d');
-    const MIN_DISTANCE = 2; // Minimum movement threshold
+    const MIN_DISTANCE = 2; // threshold to avoid extra dots
 
     switch (gesture) {
       case 'draw':
@@ -156,7 +159,6 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
             y: canvasY,
             color: "#FF0000",
             lineWidth: 3,
-            eraser: false,
             handGesture: true
           });
           prevCoords.current = { x: canvasX, y: canvasY };

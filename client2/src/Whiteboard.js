@@ -8,17 +8,12 @@ function Whiteboard({ socket, roomId, localId }) {
   const isDrawing = useRef(false);
   const animationFrameRef = useRef(null);
 
-  // Tool state: "draw" or "erase"
+  // Tool mode state: "draw" or "erase"
   const [tool, setTool] = useState('draw');
-  // Drawing settings
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
-  // Eraser settings (size)
-  const [eraserSize, setEraserSize] = useState(20);
-  // For eraser cursor indicator position
-  const [eraserPos, setEraserPos] = useState({ x: null, y: null });
 
-  // Calculate canvas coordinates (account for scaling)
+  // Get proper canvas coordinates (accounting for scaling)
   const getCanvasCoordinates = useCallback((clientX, clientY) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -31,16 +26,16 @@ function Whiteboard({ socket, roomId, localId }) {
     };
   }, []);
 
-  // Draw a line with optional eraser effect
+  // Draw a line on the canvas; if eraser is true, use destination-out mode to erase
   const drawLine = useCallback((prevX, prevY, x, y, strokeColor, strokeWidth, eraser = false) => {
     animationFrameRef.current = requestAnimationFrame(() => {
       const context = contextRef.current;
       if (!context) return;
       context.save();
+      // If eraser, set composite mode to remove pixels
       if (eraser) {
         context.globalCompositeOperation = 'destination-out';
-        // Stroke color doesn't matter when erasing
-        context.strokeStyle = 'rgba(0,0,0,1)';
+        context.strokeStyle = 'rgba(0,0,0,1)'; // color doesn't matter here
       } else {
         context.globalCompositeOperation = 'source-over';
         context.strokeStyle = strokeColor;
@@ -56,23 +51,26 @@ function Whiteboard({ socket, roomId, localId }) {
 
   // Handle incoming draw events from the socket
   const handleDraw = useCallback((data) => {
-    // Ignore self-generated mouse-drawn events (handGesture events include eraser flag already)
+    // Ignore self-generated events unless they come from hand gestures
     if (!data.eraser && data.senderId === localId) return;
     drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth, data.eraser);
   }, [localId, drawLine]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    // Set fixed internal resolution; display controlled by CSS
+    // Set internal resolution; display can be controlled via CSS
     canvas.width = 640;
     canvas.height = 480;
     const context = canvas.getContext('2d');
     context.lineCap = 'round';
-    // (The drawLine function will set the correct composite mode)
+    // We'll use the drawLine function to set composite mode as needed
     contextRef.current = context;
 
+    // Setup socket listeners
     socket.on('draw', handleDraw);
-    socket.on('clearCanvas', () => context.clearRect(0, 0, canvas.width, canvas.height));
+    socket.on('clearCanvas', () => {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+    });
 
     return () => {
       socket.off('draw', handleDraw);
@@ -81,7 +79,11 @@ function Whiteboard({ socket, roomId, localId }) {
     };
   }, [socket, localId, handleDraw]);
 
-  // Mouse event handlers
+  // Update stroke style when not using globalCompositeOperation directly;
+  // Our drawLine function sets composite mode on each draw.
+  // (We could update contextRef here if needed.)
+
+  // Mouse event handlers for drawing/erasing
   const startDrawing = (e) => {
     const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
     isDrawing.current = true;
@@ -91,15 +93,12 @@ function Whiteboard({ socket, roomId, localId }) {
   };
 
   const draw = (e) => {
-    // Always update eraser cursor position if in eraser mode
-    if (tool === 'erase') {
-      const pos = getCanvasCoordinates(e.clientX, e.clientY);
-      setEraserPos(pos);
-    }
     if (!isDrawing.current || !prevCoords.current) return;
     const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
     animationFrameRef.current = requestAnimationFrame(() => {
+      // Use our drawLine function with eraser flag if tool === 'erase'
       drawLine(prevCoords.current.x, prevCoords.current.y, x, y, color, lineWidth, tool === 'erase');
+      // Emit the draw event to other clients
       socket.emit('draw', {
         roomId,
         senderId: localId,
@@ -121,71 +120,51 @@ function Whiteboard({ socket, roomId, localId }) {
     prevCoords.current = null;
   };
 
-  // Clear the canvas completely
+  // Clear the entire canvas
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
   }, []);
 
+  // Handle clear button: clear locally and notify others
   const handleClear = () => {
     clearCanvas();
     socket.emit('clearCanvas', { roomId, senderId: localId });
   };
 
-  // Toggle eraser mode (but leave drawing mode as default otherwise)
+  // Toggle between drawing and eraser modes
   const toggleEraser = () => {
-    setTool(prev => (prev === 'draw' ? 'erase' : 'draw'));
-  };
-
-  // For updating eraser cursor even when not drawing
-  const handleMouseMove = (e) => {
-    if (tool === 'erase') {
-      const pos = getCanvasCoordinates(e.clientX, e.clientY);
-      setEraserPos(pos);
-    }
-    draw(e);
+    setTool((prev) => (prev === 'draw' ? 'erase' : 'draw'));
   };
 
   return (
     <div style={styles.whiteboardContainer}>
       <div style={styles.tools}>
-        <div style={styles.drawTools}>
-          <label>Color: </label>
-          <input 
-            type="color" 
-            value={color} 
-            onChange={(e) => setColor(e.target.value)}
-            aria-label="Select drawing color"
-          />
-          <label>Line Width: </label>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            value={lineWidth}
-            onChange={(e) => setLineWidth(Number(e.target.value))}
-            aria-label="Adjust drawing line width"
-          />
-        </div>
-        <div style={styles.eraserTools}>
-          <button 
-            onClick={toggleEraser}
-            style={tool === 'erase' ? styles.activeEraserButton : styles.eraserButton}
-            aria-label="Toggle eraser mode"
-          >
-            {tool === 'erase' ? 'Eraser On' : 'Eraser Off'}
-          </button>
-          <label>Eraser Size: </label>
-          <input
-            type="range"
-            min="5"
-            max="50"
-            value={eraserSize}
-            onChange={(e) => setEraserSize(Number(e.target.value))}
-            aria-label="Adjust eraser size"
-          />
-        </div>
+        <label>{tool === 'draw' ? 'Color:' : 'Eraser Size:'}</label>
+        <input 
+          type="color" 
+          value={color} 
+          onChange={(e) => setColor(e.target.value)}
+          aria-label="Select drawing color"
+          disabled={tool === 'erase'} // Disable color picker in eraser mode
+        />
+        <label>Line Width:</label>
+        <input
+          type="range"
+          min="1"
+          max="20"
+          value={lineWidth}
+          onChange={(e) => setLineWidth(Number(e.target.value))}
+          aria-label={tool === 'draw' ? "Adjust line width" : "Adjust eraser size"}
+        />
+        <button 
+          onClick={toggleEraser}
+          style={tool === 'erase' ? styles.activeEraserButton : styles.eraserButton}
+          aria-label="Toggle eraser mode"
+        >
+          {tool === 'erase' ? 'Eraser On' : 'Eraser Off'}
+        </button>
         <button 
           onClick={handleClear} 
           style={styles.clearButton}
@@ -194,29 +173,16 @@ function Whiteboard({ socket, roomId, localId }) {
           Clear
         </button>
       </div>
-      <div style={styles.canvasWrapper}>
-        <canvas
-          ref={canvasRef}
-          style={styles.canvas}
-          onMouseDown={startDrawing}
-          onMouseMove={handleMouseMove}
-          onMouseUp={endDrawing}
-          onMouseLeave={endDrawing}
-          aria-label="Collaborative whiteboard"
-          role="img"
-        />
-        {tool === 'erase' && eraserPos.x !== null && (
-          <div 
-            style={{
-              ...styles.eraserCursor,
-              width: `${eraserSize}px`,
-              height: `${eraserSize}px`,
-              left: `${eraserPos.x - eraserSize / 2}px`,
-              top: `${eraserPos.y - eraserSize / 2}px`
-            }}
-          />
-        )}
-      </div>
+      <canvas
+        ref={canvasRef}
+        style={styles.canvas}
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={endDrawing}
+        onMouseLeave={endDrawing}
+        aria-label="Collaborative whiteboard"
+        role="img"
+      />
     </div>
   );
 }
@@ -234,22 +200,8 @@ const styles = {
     backgroundColor: '#f5f5f5',
     display: 'flex',
     alignItems: 'center',
-    gap: '20px',
+    gap: '10px',
     flexWrap: 'wrap'
-  },
-  drawTools: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px'
-  },
-  eraserTools: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px'
-  },
-  canvasWrapper: {
-    position: 'relative',
-    flex: 1
   },
   canvas: {
     background: '#ffffff',
@@ -258,12 +210,6 @@ const styles = {
     width: '100%',
     height: 'auto',
     aspectRatio: '4/3'
-  },
-  eraserCursor: {
-    position: 'absolute',
-    border: '2px solid #000',
-    borderRadius: '50%',
-    pointerEvents: 'none'
   },
   eraserButton: {
     padding: '8px 16px',
