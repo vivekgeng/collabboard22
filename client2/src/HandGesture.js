@@ -17,7 +17,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
     hands.setOptions({
-      maxNumHands: 2, // Increase to detect both hands
+      maxNumHands: 2, // Enable detecting two hands
       modelComplexity: 1,
       minDetectionConfidence: 0.7,
       minTrackingConfidence: 0.7,
@@ -39,7 +39,9 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     camera.start();
 
     function onResults(results) {
-      // Draw video feed and landmarks on video canvas
+      // Debug: log handedness data to see how it's provided
+      console.log('multiHandedness:', results.multiHandedness);
+
       if (videoCanvasRef.current) {
         const videoCtx = videoCanvasRef.current.getContext('2d');
         videoCtx.save();
@@ -47,25 +49,38 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         videoCtx.drawImage(results.image, 0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
 
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-          // Choose the right hand if available, otherwise use the first hand detected.
+          // Try to select the right hand by checking each handedness object.
           let handIndex = 0;
           if (results.multiHandedness && results.multiHandedness.length > 0) {
-            const rightHandIndex = results.multiHandedness.findIndex(
-              (hand) => hand.label === "Right"
-            );
+            const rightHandIndex = results.multiHandedness.findIndex((hand) => {
+              // Check if hand.label exists and equals "Right"
+              if (hand.label) {
+                return hand.label === "Right";
+              }
+              // If not, check if classification exists
+              if (hand.classification && hand.classification[0] && hand.classification[0].label) {
+                return hand.classification[0].label === "Right";
+              }
+              return false;
+            });
             if (rightHandIndex !== -1) {
               handIndex = rightHandIndex;
             }
           }
+
           const landmarks = results.multiHandLandmarks[handIndex];
 
-          // Count extended fingers (simple heuristic)
+          // Simple heuristic for gesture detection using extended fingers
           let extendedFingers = 0;
           if (landmarks[8].y < landmarks[6].y) extendedFingers++; // index finger
           if (landmarks[12].y < landmarks[10].y) extendedFingers++; // middle finger
           if (landmarks[16].y < landmarks[14].y) extendedFingers++; // ring finger
           if (landmarks[20].y < landmarks[18].y) extendedFingers++; // pinky
-          let thumbExtended = landmarks[4].x < landmarks[3].x;
+          let thumbExtended = false;
+          // Sometimes thumb may be detected differently; adjust the heuristic if needed.
+          if (landmarks[4].x < landmarks[3].x) {
+            thumbExtended = true;
+          }
 
           let gesture = '';
           if (extendedFingers === 1 && !thumbExtended) {
@@ -79,7 +94,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
           }
           onGestureDetected && onGestureDetected(gesture);
 
-          // Draw hand landmarks
+          // Draw hand landmarks on video canvas for debugging
           drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
           drawingUtils.drawLandmarks(videoCtx, landmarks, { color: '#FF0000', lineWidth: 1 });
 
