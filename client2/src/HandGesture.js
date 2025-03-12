@@ -12,11 +12,15 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
   const animationFrameRef = useRef(null);
   const abortController = useRef(new AbortController());
 
+  // Gesture detection based on landmarks
   const detectGesture = useCallback((landmarks, handedness) => {
     const FINGER_THRESHOLD = 0.07;
     const THUMB_THRESHOLD = 0.05;
+
+    // Determine if the hand is right using the provided label (for info only)
     const isRightHand = handedness === 'Right';
 
+    // Compute basic measures
     const indexTip = landmarks[8];
     const indexDip = landmarks[6];
     const middleTip = landmarks[12];
@@ -30,8 +34,10 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
 
     let extendedFingers = 0;
     const fingers = [
-      { tip: 8, dip: 6 }, { tip: 12, dip: 10 },
-      { tip: 16, dip: 14 }, { tip: 20, dip: 18 }
+      { tip: 8, dip: 6 },
+      { tip: 12, dip: 10 },
+      { tip: 16, dip: 14 },
+      { tip: 20, dip: 18 }
     ];
     
     fingers.forEach(({ tip, dip }) => {
@@ -86,9 +92,10 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         const videoCtx = videoCanvasRef.current.getContext('2d');
         const drawCtx = drawingCanvasRef.current.getContext('2d');
         
+        // Clear and draw the video feed with mirroring
         videoCtx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
         videoCtx.save();
-        videoCtx.scale(-1, 1); // Mirror the video feed
+        videoCtx.scale(-1, 1); // Mirror horizontally
         videoCtx.drawImage(results.image, -640, 0);
         videoCtx.restore();
 
@@ -97,16 +104,17 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
             const handedness = results.multiHandedness[index].label;
             const { gesture, isRightHand } = detectGesture(landmarks, handedness);
 
-            if(gesture === 'clear') {
+            if (gesture === 'clear') {
               drawCtx.clearRect(0, 0, drawingCanvasRef.current.width, drawingCanvasRef.current.height);
               prevCoords.current = null;
             }
 
-            if(gesture) {
+            if (gesture) {
               onGestureDetected?.(gesture);
-              processDrawing(landmarks, gesture, isRightHand);
+              processDrawing(landmarks, gesture);
             }
 
+            // Draw hand landmarks on the video overlay (for debugging)
             drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, {
               color: handedness === 'Right' ? '#00FF00' : '#FF0000',
               lineWidth: 2
@@ -127,28 +135,25 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     initHandTracking();
   }, [onGestureDetected, detectGesture]);
 
-  const processDrawing = useCallback((landmarks, gesture, isRightHand) => {
+  // Process drawing: always mirror the x-coordinate for both hands
+  const processDrawing = useCallback((landmarks, gesture) => {
     const canvas = drawingCanvasRef.current;
     if (!canvas) return;
-
-    // Get raw coordinates (0-1 range)
+    // Get raw normalized coordinates (0-1)
     const rawX = landmarks[8].x;
     const rawY = landmarks[8].y;
 
-    // Convert to canvas pixels
-    let canvasX = rawX * canvas.width;
+    // Always mirror the x-coordinate (since the video is mirrored)
+    const canvasX = canvas.width - (rawX * canvas.width);
     const canvasY = rawY * canvas.height;
-
-    // Mirror correction for right hand
-    if(isRightHand) canvasX = canvas.width - canvasX;
 
     const drawCtx = canvas.getContext('2d');
 
-    switch(gesture) {
+    switch (gesture) {
       case 'draw':
         animationFrameRef.current = requestAnimationFrame(() => {
           if (!prevCoords.current) {
-            // Start new path at exact finger position
+            // Start new path at the finger position
             prevCoords.current = { x: canvasX, y: canvasY };
             drawCtx.beginPath();
             drawCtx.moveTo(canvasX, canvasY);
@@ -156,12 +161,10 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
             drawCtx.lineWidth = 3;
             return;
           }
-
-          // Draw line to current position
+          // Draw line to the current position
           drawCtx.lineTo(canvasX, canvasY);
           drawCtx.stroke();
-
-          // Emit drawing data
+          // Emit drawing data to other clients
           socket?.emit('draw', {
             roomId,
             senderId: localId,
@@ -173,16 +176,13 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
             lineWidth: 3,
             handGesture: true
           });
-
           prevCoords.current = { x: canvasX, y: canvasY };
         });
         break;
-
       case 'stop':
         drawCtx.closePath();
         prevCoords.current = null;
         break;
-
       default:
         prevCoords.current = null;
     }
