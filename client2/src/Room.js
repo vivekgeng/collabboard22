@@ -5,7 +5,7 @@ import Whiteboard from './Whiteboard';
 import Chat from './Chat';
 import HandGesture from './HandGesture';
 
-const SERVER_URL = 'https://collabboard22.vercel.app/'; // Adjust as needed
+const SERVER_URL = 'https://collabboard22.onrender.com'; // Adjust as needed
 
 function Room() {
   const { roomId } = useParams();

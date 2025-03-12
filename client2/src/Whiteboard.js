@@ -3,12 +3,13 @@ import React, { useRef, useState, useEffect } from 'react';
 function Whiteboard({ socket, roomId }) {
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
+  const prevCoords = useRef(null); // To store the previous drawing coordinates
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    // Set canvas size to match HandGesture (640x480)
+    // Set canvas size to 640x480
     canvas.width = 640;
     canvas.height = 480;
     const context = canvas.getContext('2d');
@@ -50,11 +51,12 @@ function Whiteboard({ socket, roomId }) {
     const context = contextRef.current;
     context.beginPath();
     context.moveTo(x, y);
-    context.prevX = x;
-    context.prevY = y;
+    // Save the initial coordinate
+    prevCoords.current = { x, y };
   };
 
   const draw = (e) => {
+    if (!prevCoords.current) return;
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -66,19 +68,22 @@ function Whiteboard({ socket, roomId }) {
     // Emit the draw event so that others can see the line
     socket.emit('draw', {
       roomId,
-      prevX: context.prevX,
-      prevY: context.prevY,
-      x: x,
-      y: y,
+      prevX: prevCoords.current.x,
+      prevY: prevCoords.current.y,
+      x,
+      y,
       color,
       lineWidth
     });
-    context.prevX = x;
-    context.prevY = y;
+    // Update previous coordinates
+    prevCoords.current = { x, y };
   };
 
   const endDrawing = () => {
-    contextRef.current.closePath();
+    if (contextRef.current) {
+      contextRef.current.closePath();
+    }
+    prevCoords.current = null;
   };
 
   // Function to draw incoming lines from remote events
@@ -119,7 +124,7 @@ function Whiteboard({ socket, roomId }) {
           min="1"
           max="10"
           value={lineWidth}
-          onChange={(e) => setLineWidth(e.target.value)}
+          onChange={(e) => setLineWidth(Number(e.target.value))}
         />
       </div>
       <canvas
