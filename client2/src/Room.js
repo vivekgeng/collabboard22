@@ -1,3 +1,4 @@
+// Room.js
 import React, { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -11,13 +12,17 @@ function Room() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const [socket, setSocket] = useState(null);
+  const [localId, setLocalId] = useState(null);
   const [handGestureMode, setHandGestureMode] = useState(false);
   const [gestureStatus, setGestureStatus] = useState('');
 
   useEffect(() => {
     const newSocket = io(SERVER_URL);
-    setSocket(newSocket);
     newSocket.emit('joinRoom', roomId);
+    newSocket.on('connect', () => {
+      setLocalId(newSocket.id);
+    });
+    setSocket(newSocket);
     return () => newSocket.disconnect();
   }, [roomId]);
 
@@ -34,7 +39,7 @@ function Room() {
     console.log('Gesture detected:', gesture);
     if (gesture === 'clear') {
       console.log('Clearing drawing...');
-      socket && socket.emit('clearCanvas', { roomId });
+      socket && socket.emit('clearCanvas', { roomId, senderId: localId });
     }
   };
 
@@ -53,28 +58,20 @@ function Room() {
           </button>
         </div>
       </header>
-      
-      {/* ********** UPDATED CONTENT SECTION ********** */}
       <div style={styles.content}>
-        {/* Always render the Whiteboard so it's visible and listening for events */}
         <div style={{ flex: 1, marginRight: '10px' }}>
-          <Whiteboard socket={socket} roomId={roomId} />
+          {/* Pass localId to Whiteboard */}
+          <Whiteboard socket={socket} roomId={roomId} localId={localId} />
         </div>
-
-        {/* Render HandGesture only if handGestureMode is enabled */}
         {handGestureMode && (
           <div style={{ flex: 1 }}>
             <HandGesture socket={socket} roomId={roomId} onGestureDetected={handleGesture} />
           </div>
         )}
-
-        {/* Chat on the side or below, as you prefer */}
         <div style={{ flex: 1 }}>
           <Chat socket={socket} roomId={roomId} />
         </div>
       </div>
-      {/* ********************************************** */}
-
       {handGestureMode && (
         <div style={styles.gestureInfo}>Current Gesture: {gestureStatus}</div>
       )}

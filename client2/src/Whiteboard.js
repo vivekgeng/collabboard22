@@ -1,6 +1,7 @@
+// Whiteboard.js
 import React, { useRef, useState, useEffect } from 'react';
 
-function Whiteboard({ socket, roomId }) {
+function Whiteboard({ socket, roomId, localId }) {
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
   const prevCoords = useRef(null);
@@ -10,10 +11,9 @@ function Whiteboard({ socket, roomId }) {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    // Set canvas drawing buffer dimensions
+    // Set canvas dimensions
     canvas.width = 640;
     canvas.height = 480;
-    // Ensure CSS dimensions match the drawing buffer
     canvas.style.width = '640px';
     canvas.style.height = '480px';
 
@@ -23,12 +23,14 @@ function Whiteboard({ socket, roomId }) {
     context.lineWidth = lineWidth;
     contextRef.current = context;
 
-    // Listen for incoming draw events
+    // Listen for remote draw events
     socket.on('draw', (data) => {
+      // Ignore events that originated from this client
+      if (data.senderId && data.senderId === localId) return;
       drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);
     });
 
-    // Listen for clearCanvas events
+    // Listen for clear events
     socket.on('clearCanvas', () => {
       clearCanvas();
     });
@@ -37,9 +39,8 @@ function Whiteboard({ socket, roomId }) {
       socket.off('draw');
       socket.off('clearCanvas');
     };
-  }, [socket]);
+  }, [socket, localId]);
 
-  // Update drawing settings if color or lineWidth change
   useEffect(() => {
     if (contextRef.current) {
       contextRef.current.strokeStyle = color;
@@ -60,13 +61,13 @@ function Whiteboard({ socket, roomId }) {
     if (!isDrawing.current || !prevCoords.current) return;
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
-    const context = contextRef.current;
-    context.lineTo(x, y);
-    context.stroke();
+    contextRef.current.lineTo(x, y);
+    contextRef.current.stroke();
 
-    // Emit drawing event
+    // Emit drawing event with senderId
     socket.emit('draw', {
       roomId,
+      senderId: localId,
       prevX: prevCoords.current.x,
       prevY: prevCoords.current.y,
       x,
@@ -85,7 +86,6 @@ function Whiteboard({ socket, roomId }) {
     prevCoords.current = null;
   };
 
-  // Also end drawing if mouse leaves the canvas
   const handleMouseLeave = () => {
     endDrawing();
   };
@@ -113,29 +113,17 @@ function Whiteboard({ socket, roomId }) {
 
   const handleClear = () => {
     clearCanvas();
-    socket.emit('clearCanvas', { roomId });
+    socket.emit('clearCanvas', { roomId, senderId: localId });
   };
 
   return (
     <div style={styles.whiteboardContainer}>
       <div style={styles.tools}>
         <label>Color: </label>
-        <input
-          type="color"
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-        />
+        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
         <label>Line Width: </label>
-        <input
-          type="range"
-          min="1"
-          max="10"
-          value={lineWidth}
-          onChange={(e) => setLineWidth(Number(e.target.value))}
-        />
-        <button onClick={handleClear} style={styles.clearButton}>
-          Clear
-        </button>
+        <input type="range" min="1" max="10" value={lineWidth} onChange={(e) => setLineWidth(Number(e.target.value))} />
+        <button onClick={handleClear} style={styles.clearButton}>Clear</button>
       </div>
       <canvas
         ref={canvasRef}

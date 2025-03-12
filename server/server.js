@@ -28,20 +28,20 @@ io.on('connection', (socket) => {
 
   // Listen for drawing data and broadcast to others in the same room
   socket.on('draw', (data) => {
+    // Broadcast the drawing event to everyone except the sender
     socket.broadcast.to(data.roomId).emit('draw', data);
   });
-   
 
   // Listen for chat messages and broadcast to others in the same room
   socket.on('chatMessage', (msgData) => {
     socket.to(msgData.roomId).emit('chatMessage', msgData);
   });
-  
-  // Listen for clearCanvas event and broadcast to the room
+
+  // Listen for clearCanvas event and broadcast to others in the same room
   socket.on('clearCanvas', (data) => {
-    io.in(data.roomId).emit('clearCanvas', data);
+    // Use broadcast so the sender clears its own canvas without reprocessing the event
+    socket.broadcast.to(data.roomId).emit('clearCanvas', data);
   });
-  
 
   // Disconnect event
   socket.on('disconnect', () => {
