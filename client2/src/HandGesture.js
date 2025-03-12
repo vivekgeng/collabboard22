@@ -6,9 +6,9 @@ import * as cam from '@mediapipe/camera_utils';
 
 function HandGesture({ onGestureDetected, socket, roomId, localId }) {
   const videoRef = useRef(null);
-  const videoCanvasRef = useRef(null);
-  const drawingCanvasRef = useRef(null);
-  const prevCoords = useRef(null);
+  const videoCanvasRef = useRef(null);   // For video & landmarks
+  const drawingCanvasRef = useRef(null);   // For persistent drawing overlay
+  const prevCoords = useRef(null);         // To store previous index finger coordinates
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -17,7 +17,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
     hands.setOptions({
-      maxNumHands: 1,
+      maxNumHands: 2, // Increase to detect both hands
       modelComplexity: 1,
       minDetectionConfidence: 0.7,
       minTrackingConfidence: 0.7,
@@ -39,6 +39,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     camera.start();
 
     function onResults(results) {
+      // Draw video feed and landmarks on video canvas
       if (videoCanvasRef.current) {
         const videoCtx = videoCanvasRef.current.getContext('2d');
         videoCtx.save();
@@ -46,14 +47,24 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         videoCtx.drawImage(results.image, 0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
 
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-          const landmarks = results.multiHandLandmarks[0];
+          // Choose the right hand if available, otherwise use the first hand detected.
+          let handIndex = 0;
+          if (results.multiHandedness && results.multiHandedness.length > 0) {
+            const rightHandIndex = results.multiHandedness.findIndex(
+              (hand) => hand.label === "Right"
+            );
+            if (rightHandIndex !== -1) {
+              handIndex = rightHandIndex;
+            }
+          }
+          const landmarks = results.multiHandLandmarks[handIndex];
 
-          // Simple heuristic for gesture detection
+          // Count extended fingers (simple heuristic)
           let extendedFingers = 0;
-          if (landmarks[8].y < landmarks[6].y) extendedFingers++;
-          if (landmarks[12].y < landmarks[10].y) extendedFingers++;
-          if (landmarks[16].y < landmarks[14].y) extendedFingers++;
-          if (landmarks[20].y < landmarks[18].y) extendedFingers++;
+          if (landmarks[8].y < landmarks[6].y) extendedFingers++; // index finger
+          if (landmarks[12].y < landmarks[10].y) extendedFingers++; // middle finger
+          if (landmarks[16].y < landmarks[14].y) extendedFingers++; // ring finger
+          if (landmarks[20].y < landmarks[18].y) extendedFingers++; // pinky
           let thumbExtended = landmarks[4].x < landmarks[3].x;
 
           let gesture = '';
@@ -68,9 +79,11 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
           }
           onGestureDetected && onGestureDetected(gesture);
 
+          // Draw hand landmarks
           drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
           drawingUtils.drawLandmarks(videoCtx, landmarks, { color: '#FF0000', lineWidth: 1 });
 
+          // Process drawing if gesture is "draw"
           const indexX = landmarks[8].x * videoCanvasRef.current.width;
           const indexY = landmarks[8].y * videoCanvasRef.current.height;
           if (gesture === 'draw') {
@@ -83,7 +96,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
                 drawCtx.strokeStyle = "#FF0000";
                 drawCtx.lineWidth = 3;
                 drawCtx.stroke();
-                // Emit hand gesture drawing event with handGesture flag true
+                // Emit the drawing event with handGesture flag true
                 if (socket) {
                   socket.emit('draw', {
                     roomId,
@@ -122,13 +135,16 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
 
   return (
     <div style={{ position: 'relative', width: '640px', height: '480px' }}>
+      {/* Hidden video element */}
       <video ref={videoRef} style={{ display: 'none' }} />
+      {/* Canvas for video feed and landmarks */}
       <canvas
         ref={videoCanvasRef}
         width="640"
         height="480"
         style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }}
       />
+      {/* Canvas for persistent drawing */}
       <canvas
         ref={drawingCanvasRef}
         width="640"
