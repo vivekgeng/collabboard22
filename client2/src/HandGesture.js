@@ -6,7 +6,7 @@ import * as cam from '@mediapipe/camera_utils';
 
 function HandGesture({ onGestureDetected, socket, roomId, localId }) {
   const videoRef = useRef(null);
-  const videoCanvasRef = useRef(null);   // For video feed and landmarks
+  const videoCanvasRef = useRef(null);   // For showing video and landmarks
   const drawingCanvasRef = useRef(null);   // For persistent drawing overlay
   const prevCoords = useRef(null);         // To store previous index finger coordinates
 
@@ -18,7 +18,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
     hands.setOptions({
-      maxNumHands: 2, // Allow detection of two hands
+      maxNumHands: 1, // Process one hand at a time
       modelComplexity: 1,
       minDetectionConfidence: 0.7,
       minTrackingConfidence: 0.7,
@@ -26,6 +26,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
 
     hands.onResults(onResults);
 
+    // Set up the camera using the video element
     const camera = new cam.Camera(videoRef.current, {
       onFrame: async () => {
         try {
@@ -35,49 +36,35 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         }
       },
       width: 640,
-      height: 480
+      height: 480,
     });
     camera.start();
 
     function onResults(results) {
-      // Log the handedness data for debugging purposes.
-      console.log('multiHandedness:', results.multiHandedness);
-
       if (videoCanvasRef.current) {
         const videoCtx = videoCanvasRef.current.getContext('2d');
         videoCtx.save();
         videoCtx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
         videoCtx.drawImage(results.image, 0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
 
+        // Only proceed if at least one hand is detected
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-          // Choose the hand with the highest confidence.
-          let chosenHandIndex = 0;
-          let chosenLabel = "Unknown";
-          if (results.multiHandedness && results.multiHandedness.length > 0) {
-            let maxScore = 0;
-            for (let i = 0; i < results.multiHandedness.length; i++) {
-              const classification = results.multiHandedness[i].classification;
-              if (classification && classification[0] && classification[0].score > maxScore) {
-                maxScore = classification[0].score;
-                chosenHandIndex = i;
-                chosenLabel = classification[0].label;
-              }
-            }
-          }
-          console.log('Chosen hand label:', chosenLabel);
-
-          const landmarks = results.multiHandLandmarks[chosenHandIndex];
+          // For simplicity, use the first detected hand
+          const landmarks = results.multiHandLandmarks[0];
           const canvasWidth = videoCanvasRef.current.width;
           const canvasHeight = videoCanvasRef.current.height;
 
-          // Simple heuristic for gesture detection:
-          let extendedFingers = 0;
-          if (landmarks[8].y < landmarks[6].y) extendedFingers++; // index finger
-          if (landmarks[12].y < landmarks[10].y) extendedFingers++; // middle finger
-          if (landmarks[16].y < landmarks[14].y) extendedFingers++; // ring finger
-          if (landmarks[20].y < landmarks[18].y) extendedFingers++; // pinky
+          // Log handedness for debugging (if available)
+          if (results.multiHandedness && results.multiHandedness.length > 0) {
+            console.log("Detected hand label:", results.multiHandedness[0].classification[0].label);
+          }
 
-          // Basic thumb heuristic (adjust if needed)
+          // Use a simple heuristic: count extended fingers
+          let extendedFingers = 0;
+          if (landmarks[8].y < landmarks[6].y) extendedFingers++; // index
+          if (landmarks[12].y < landmarks[10].y) extendedFingers++; // middle
+          if (landmarks[16].y < landmarks[14].y) extendedFingers++; // ring
+          if (landmarks[20].y < landmarks[18].y) extendedFingers++; // pinky
           let thumbExtended = landmarks[4].x < landmarks[3].x;
 
           let gesture = '';
@@ -92,17 +79,16 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
           }
           if (onGestureDetected) onGestureDetected(gesture);
 
-          // Draw landmarks on video canvas for debugging
+          // Draw the landmarks for debugging
           drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
           drawingUtils.drawLandmarks(videoCtx, landmarks, { color: '#FF0000', lineWidth: 1 });
 
-          // Use the index finger tip coordinates
-          let indexX = landmarks[8].x * canvasWidth;
-          let indexY = landmarks[8].y * canvasHeight;
-          // If you suspect mirroring is needed, try uncommenting the next line:
-          // indexX = canvasWidth - indexX;
+          // Always mirror the x-coordinate to counteract the mirrored video preview
+          const rawX = landmarks[8].x * canvasWidth;
+          const indexX = canvasWidth - rawX; // Mirror x
+          const indexY = landmarks[8].y * canvasHeight;
 
-          // Process drawing if gesture is "draw"
+          // Process drawing if the detected gesture is "draw"
           if (gesture === 'draw') {
             if (drawingCanvasRef.current) {
               const drawCtx = drawingCanvasRef.current.getContext('2d');
@@ -113,7 +99,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
                 drawCtx.strokeStyle = "#FF0000";
                 drawCtx.lineWidth = 3;
                 drawCtx.stroke();
-                // Emit the drawing event with handGesture flag true
+                // Emit the drawing event (handGesture flag true)
                 if (socket) {
                   socket.emit('draw', {
                     roomId,
@@ -124,7 +110,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
                     y: indexY,
                     color: "#FF0000",
                     lineWidth: 3,
-                    handGesture: true
+                    handGesture: true,
                   });
                 }
               }
