@@ -6,18 +6,19 @@ import * as cam from '@mediapipe/camera_utils';
 
 function HandGesture({ onGestureDetected, socket, roomId, localId }) {
   const videoRef = useRef(null);
-  const videoCanvasRef = useRef(null);   // For video & landmarks
+  const videoCanvasRef = useRef(null);   // For video feed and landmarks
   const drawingCanvasRef = useRef(null);   // For persistent drawing overlay
   const prevCoords = useRef(null);         // To store previous index finger coordinates
 
   useEffect(() => {
     if (!videoRef.current) return;
 
+    // Initialize Mediapipe Hands
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
     hands.setOptions({
-      maxNumHands: 2, // Detect up to two hands
+      maxNumHands: 2, // Allow detection of two hands
       modelComplexity: 1,
       minDetectionConfidence: 0.7,
       minTrackingConfidence: 0.7,
@@ -39,7 +40,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     camera.start();
 
     function onResults(results) {
-      // Log handedness for debugging
+      // Log the handedness data for debugging purposes.
       console.log('multiHandedness:', results.multiHandedness);
 
       if (videoCanvasRef.current) {
@@ -49,37 +50,35 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         videoCtx.drawImage(results.image, 0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
 
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-          // Select the right hand if available, else default to the first hand
-          let handIndex = 0;
-          let isRightHand = false;
+          // Choose the hand with the highest confidence.
+          let chosenHandIndex = 0;
+          let chosenLabel = "Unknown";
           if (results.multiHandedness && results.multiHandedness.length > 0) {
-            const rightHandIndex = results.multiHandedness.findIndex((hand) => {
-              // Check if hand.label exists and equals "Right" or if classification is provided
-              if (hand.label) {
-                return hand.label === "Right";
+            let maxScore = 0;
+            for (let i = 0; i < results.multiHandedness.length; i++) {
+              const classification = results.multiHandedness[i].classification;
+              if (classification && classification[0] && classification[0].score > maxScore) {
+                maxScore = classification[0].score;
+                chosenHandIndex = i;
+                chosenLabel = classification[0].label;
               }
-              if (hand.classification && hand.classification[0] && hand.classification[0].label) {
-                return hand.classification[0].label === "Right";
-              }
-              return false;
-            });
-            if (rightHandIndex !== -1) {
-              handIndex = rightHandIndex;
-              isRightHand = true;
             }
           }
+          console.log('Chosen hand label:', chosenLabel);
 
-          const landmarks = results.multiHandLandmarks[handIndex];
+          const landmarks = results.multiHandLandmarks[chosenHandIndex];
           const canvasWidth = videoCanvasRef.current.width;
           const canvasHeight = videoCanvasRef.current.height;
 
-          // Simple heuristic for gesture detection
+          // Simple heuristic for gesture detection:
           let extendedFingers = 0;
           if (landmarks[8].y < landmarks[6].y) extendedFingers++; // index finger
           if (landmarks[12].y < landmarks[10].y) extendedFingers++; // middle finger
           if (landmarks[16].y < landmarks[14].y) extendedFingers++; // ring finger
           if (landmarks[20].y < landmarks[18].y) extendedFingers++; // pinky
-          let thumbExtended = landmarks[4].x < landmarks[3].x; // basic heuristic
+
+          // Basic thumb heuristic (adjust if needed)
+          let thumbExtended = landmarks[4].x < landmarks[3].x;
 
           let gesture = '';
           if (extendedFingers === 1 && !thumbExtended) {
@@ -91,19 +90,17 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
           } else if (extendedFingers === 4) {
             gesture = 'process';
           }
-          onGestureDetected && onGestureDetected(gesture);
+          if (onGestureDetected) onGestureDetected(gesture);
 
-          // Draw landmarks for debugging
+          // Draw landmarks on video canvas for debugging
           drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
           drawingUtils.drawLandmarks(videoCtx, landmarks, { color: '#FF0000', lineWidth: 1 });
 
-          // Calculate the index finger tip position
-          // For right hand, mirror the x coordinate
+          // Use the index finger tip coordinates
           let indexX = landmarks[8].x * canvasWidth;
-          if (isRightHand) {
-            indexX = canvasWidth - indexX;
-          }
-          const indexY = landmarks[8].y * canvasHeight;
+          let indexY = landmarks[8].y * canvasHeight;
+          // If you suspect mirroring is needed, try uncommenting the next line:
+          // indexX = canvasWidth - indexX;
 
           // Process drawing if gesture is "draw"
           if (gesture === 'draw') {
@@ -116,7 +113,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
                 drawCtx.strokeStyle = "#FF0000";
                 drawCtx.lineWidth = 3;
                 drawCtx.stroke();
-                // Emit drawing event with handGesture flag true
+                // Emit the drawing event with handGesture flag true
                 if (socket) {
                   socket.emit('draw', {
                     roomId,
