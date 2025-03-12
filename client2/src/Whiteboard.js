@@ -7,10 +7,13 @@ function Whiteboard({ socket, roomId, localId }) {
   const prevCoords = useRef(null);
   const isDrawing = useRef(false);
   const animationFrameRef = useRef(null);
+
+  // New state for tool mode: "draw" or "erase"
+  const [tool, setTool] = useState('draw');
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
 
-  // Fixed coordinate calculation with scaling
+  // Function to calculate canvas coordinates with scaling
   const getCanvasCoordinates = useCallback((clientX, clientY) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -25,7 +28,7 @@ function Whiteboard({ socket, roomId, localId }) {
     };
   }, []);
 
-  // Optimized drawing function
+  // Optimized function to draw a line
   const drawLine = useCallback((prevX, prevY, x, y, strokeColor, strokeWidth) => {
     animationFrameRef.current = requestAnimationFrame(() => {
       const context = contextRef.current;
@@ -34,7 +37,7 @@ function Whiteboard({ socket, roomId, localId }) {
       const path = new Path2D();
       path.moveTo(prevX, prevY);
       path.lineTo(x, y);
-      
+
       context.save();
       context.strokeStyle = strokeColor;
       context.lineWidth = strokeWidth;
@@ -43,8 +46,9 @@ function Whiteboard({ socket, roomId, localId }) {
     });
   }, []);
 
-  // Socket event handler
+  // Socket event handler for drawing data
   const handleDraw = useCallback((data) => {
+    // Ignore self-generated events (for mouse drawing) unless they come from hand gestures
     if (!data.handGesture && data.senderId === localId) return;
     drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);
   }, [localId, drawLine]);
@@ -56,11 +60,12 @@ function Whiteboard({ socket, roomId, localId }) {
     canvas.height = 480;
     const context = canvas.getContext('2d');
     context.lineCap = 'round';
-    context.strokeStyle = color;
+    // Set stroke style based on tool mode
+    context.strokeStyle = tool === 'erase' ? '#ffffff' : color;
     context.lineWidth = lineWidth;
     contextRef.current = context;
 
-    // Event listeners
+    // Socket event listeners
     socket.on('draw', handleDraw);
     socket.on('clearCanvas', () => context.clearRect(0, 0, canvas.width, canvas.height));
 
@@ -69,9 +74,17 @@ function Whiteboard({ socket, roomId, localId }) {
       socket.off('clearCanvas');
       cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [socket, localId, color, lineWidth, handleDraw]);
+  }, [socket, localId, color, lineWidth, tool, handleDraw]);
 
-  // Drawing handlers
+  // Update stroke style when color, lineWidth, or tool mode changes
+  useEffect(() => {
+    if (contextRef.current) {
+      contextRef.current.strokeStyle = tool === 'erase' ? '#ffffff' : color;
+      contextRef.current.lineWidth = lineWidth;
+    }
+  }, [color, lineWidth, tool]);
+
+  // Mouse-based drawing handlers
   const startDrawing = (e) => {
     const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
     isDrawing.current = true;
@@ -88,6 +101,7 @@ function Whiteboard({ socket, roomId, localId }) {
       contextRef.current.lineTo(x, y);
       contextRef.current.stroke();
 
+      // Emit drawing event; if eraser is active, use white color
       socket.emit('draw', {
         roomId,
         senderId: localId,
@@ -95,7 +109,7 @@ function Whiteboard({ socket, roomId, localId }) {
         prevY: prevCoords.current.y,
         x,
         y,
-        color,
+        color: tool === 'erase' ? "#ffffff" : color,
         lineWidth,
         handGesture: false
       });
@@ -110,16 +124,22 @@ function Whiteboard({ socket, roomId, localId }) {
     prevCoords.current = null;
   };
 
-  // Clear functionality
+  // Clear the canvas locally
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
   }, []);
 
+  // Handle clear button: clear locally and emit event
   const handleClear = () => {
     clearCanvas();
     socket.emit('clearCanvas', { roomId, senderId: localId });
+  };
+
+  // Toggle the tool mode between "draw" and "erase"
+  const toggleEraser = () => {
+    setTool((prev) => (prev === 'draw' ? 'erase' : 'draw'));
   };
 
   return (
@@ -131,6 +151,7 @@ function Whiteboard({ socket, roomId, localId }) {
           value={color} 
           onChange={(e) => setColor(e.target.value)}
           aria-label="Select drawing color"
+          disabled={tool === 'erase'}  // Disable color picker in eraser mode
         />
         <label>Line Width: </label>
         <input
@@ -141,6 +162,14 @@ function Whiteboard({ socket, roomId, localId }) {
           onChange={(e) => setLineWidth(Number(e.target.value))}
           aria-label="Adjust line width"
         />
+        {/* Eraser button */}
+        <button 
+          onClick={toggleEraser}
+          style={tool === 'erase' ? styles.activeEraserButton : styles.eraserButton}
+          aria-label="Toggle eraser mode"
+        >
+          {tool === 'erase' ? 'Eraser On' : 'Eraser Off'}
+        </button>
         <button 
           onClick={handleClear} 
           style={styles.clearButton}
@@ -185,7 +214,25 @@ const styles = {
     touchAction: 'none',
     width: '100%',
     height: 'auto',
-    aspectRatio: '4/3' // Maintain correct aspect ratio
+    aspectRatio: '4/3'
+  },
+  eraserButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    backgroundColor: '#ffc107',
+    color: '#000',
+    border: 'none',
+    borderRadius: '4px'
+  },
+  activeEraserButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    backgroundColor: '#e0a800',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px'
   },
   clearButton: {
     padding: '8px 16px',
@@ -194,11 +241,7 @@ const styles = {
     backgroundColor: '#dc3545',
     color: '#fff',
     border: 'none',
-    borderRadius: '4px',
-    transition: 'opacity 0.2s',
-    ':hover': {
-      opacity: 0.8
-    }
+    borderRadius: '4px'
   }
 };
 
