@@ -3,7 +3,8 @@ import React, { useRef, useState, useEffect } from 'react';
 function Whiteboard({ socket, roomId }) {
   const canvasRef = useRef(null);
   const contextRef = useRef(null);
-  const prevCoords = useRef(null); // For tracking previous coordinates
+  const prevCoords = useRef(null);
+  const isDrawing = useRef(false);
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
 
@@ -12,7 +13,7 @@ function Whiteboard({ socket, roomId }) {
     // Set canvas drawing buffer dimensions
     canvas.width = 640;
     canvas.height = 480;
-    // Also set CSS dimensions to match exactly
+    // Ensure CSS dimensions match the drawing buffer
     canvas.style.width = '640px';
     canvas.style.height = '480px';
 
@@ -22,7 +23,7 @@ function Whiteboard({ socket, roomId }) {
     context.lineWidth = lineWidth;
     contextRef.current = context;
 
-    // Listen for incoming draw events from other clients
+    // Listen for incoming draw events
     socket.on('draw', (data) => {
       drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);
     });
@@ -38,7 +39,7 @@ function Whiteboard({ socket, roomId }) {
     };
   }, [socket]);
 
-  // Update local drawing settings when color or lineWidth changes
+  // Update drawing settings if color or lineWidth change
   useEffect(() => {
     if (contextRef.current) {
       contextRef.current.strokeStyle = color;
@@ -46,25 +47,24 @@ function Whiteboard({ socket, roomId }) {
     }
   }, [color, lineWidth]);
 
-  // Start drawing: initialize previous coordinates using offsetX/Y
   const startDrawing = (e) => {
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
+    isDrawing.current = true;
+    prevCoords.current = { x, y };
     contextRef.current.beginPath();
     contextRef.current.moveTo(x, y);
-    prevCoords.current = { x, y };
   };
 
-  // Draw on the canvas and emit the drawing event using offsetX/Y
   const draw = (e) => {
-    if (!prevCoords.current) return;
+    if (!isDrawing.current || !prevCoords.current) return;
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
     const context = contextRef.current;
     context.lineTo(x, y);
     context.stroke();
 
-    // Emit drawing data to other clients in the room
+    // Emit drawing event
     socket.emit('draw', {
       roomId,
       prevX: prevCoords.current.x,
@@ -75,19 +75,21 @@ function Whiteboard({ socket, roomId }) {
       lineWidth
     });
 
-    // Update previous coordinates
     prevCoords.current = { x, y };
   };
 
-  // End drawing by clearing previous coordinates and closing the path
   const endDrawing = () => {
-    if (contextRef.current) {
-      contextRef.current.closePath();
-    }
+    if (!isDrawing.current) return;
+    isDrawing.current = false;
+    contextRef.current.closePath();
     prevCoords.current = null;
   };
 
-  // Function to draw lines from incoming data
+  // Also end drawing if mouse leaves the canvas
+  const handleMouseLeave = () => {
+    endDrawing();
+  };
+
   const drawLine = (prevX, prevY, x, y, strokeColor, strokeWidth) => {
     const context = contextRef.current;
     if (!context) return;
@@ -102,7 +104,6 @@ function Whiteboard({ socket, roomId }) {
     context.restore();
   };
 
-  // Clear the canvas locally
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -142,6 +143,7 @@ function Whiteboard({ socket, roomId }) {
         onMouseDown={startDrawing}
         onMouseMove={draw}
         onMouseUp={endDrawing}
+        onMouseLeave={handleMouseLeave}
       />
     </div>
   );
