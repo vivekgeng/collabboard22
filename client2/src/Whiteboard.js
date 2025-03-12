@@ -8,83 +8,82 @@ function Whiteboard({ socket, roomId, localId }) {
   const isDrawing = useRef(false);
   const animationFrameRef = useRef(null);
 
-  // New state for tool mode: "draw" or "erase"
+  // Tool mode state: "draw" or "erase"
   const [tool, setTool] = useState('draw');
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
 
-  // Function to calculate canvas coordinates with scaling
+  // Get proper canvas coordinates (accounting for scaling)
   const getCanvasCoordinates = useCallback((clientX, clientY) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
-
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-
     return {
       x: (clientX - rect.left) * scaleX,
       y: (clientY - rect.top) * scaleY
     };
   }, []);
 
-  // Optimized function to draw a line
-  const drawLine = useCallback((prevX, prevY, x, y, strokeColor, strokeWidth) => {
+  // Draw a line on the canvas; if eraser is true, use destination-out mode to erase
+  const drawLine = useCallback((prevX, prevY, x, y, strokeColor, strokeWidth, eraser = false) => {
     animationFrameRef.current = requestAnimationFrame(() => {
       const context = contextRef.current;
       if (!context) return;
-
+      context.save();
+      // If eraser, set composite mode to remove pixels
+      if (eraser) {
+        context.globalCompositeOperation = 'destination-out';
+        context.strokeStyle = 'rgba(0,0,0,1)'; // color doesn't matter here
+      } else {
+        context.globalCompositeOperation = 'source-over';
+        context.strokeStyle = strokeColor;
+      }
+      context.lineWidth = strokeWidth;
       const path = new Path2D();
       path.moveTo(prevX, prevY);
       path.lineTo(x, y);
-
-      context.save();
-      context.strokeStyle = strokeColor;
-      context.lineWidth = strokeWidth;
       context.stroke(path);
       context.restore();
     });
   }, []);
 
-  // Socket event handler for drawing data
+  // Handle incoming draw events from the socket
   const handleDraw = useCallback((data) => {
-    // Ignore self-generated events (for mouse drawing) unless they come from hand gestures
-    if (!data.handGesture && data.senderId === localId) return;
-    drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);
+    // Ignore self-generated events unless they come from hand gestures
+    if (!data.eraser && data.senderId === localId) return;
+    drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth, data.eraser);
   }, [localId, drawLine]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    // Set fixed internal resolution
+    // Set internal resolution; display can be controlled via CSS
     canvas.width = 640;
     canvas.height = 480;
     const context = canvas.getContext('2d');
     context.lineCap = 'round';
-    // Set stroke style based on tool mode
-    context.strokeStyle = tool === 'erase' ? '#ffffff' : color;
-    context.lineWidth = lineWidth;
+    // We'll use the drawLine function to set composite mode as needed
     contextRef.current = context;
 
-    // Socket event listeners
+    // Setup socket listeners
     socket.on('draw', handleDraw);
-    socket.on('clearCanvas', () => context.clearRect(0, 0, canvas.width, canvas.height));
+    socket.on('clearCanvas', () => {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+    });
 
     return () => {
       socket.off('draw', handleDraw);
       socket.off('clearCanvas');
       cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [socket, localId, color, lineWidth, tool, handleDraw]);
+  }, [socket, localId, handleDraw]);
 
-  // Update stroke style when color, lineWidth, or tool mode changes
-  useEffect(() => {
-    if (contextRef.current) {
-      contextRef.current.strokeStyle = tool === 'erase' ? '#ffffff' : color;
-      contextRef.current.lineWidth = lineWidth;
-    }
-  }, [color, lineWidth, tool]);
+  // Update stroke style when not using globalCompositeOperation directly;
+  // Our drawLine function sets composite mode on each draw.
+  // (We could update contextRef here if needed.)
 
-  // Mouse-based drawing handlers
+  // Mouse event handlers for drawing/erasing
   const startDrawing = (e) => {
     const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
     isDrawing.current = true;
@@ -96,12 +95,10 @@ function Whiteboard({ socket, roomId, localId }) {
   const draw = (e) => {
     if (!isDrawing.current || !prevCoords.current) return;
     const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
-
     animationFrameRef.current = requestAnimationFrame(() => {
-      contextRef.current.lineTo(x, y);
-      contextRef.current.stroke();
-
-      // Emit drawing event; if eraser is active, use white color
+      // Use our drawLine function with eraser flag if tool === 'erase'
+      drawLine(prevCoords.current.x, prevCoords.current.y, x, y, color, lineWidth, tool === 'erase');
+      // Emit the draw event to other clients
       socket.emit('draw', {
         roomId,
         senderId: localId,
@@ -109,11 +106,10 @@ function Whiteboard({ socket, roomId, localId }) {
         prevY: prevCoords.current.y,
         x,
         y,
-        color: tool === 'erase' ? "#ffffff" : color,
+        color,
         lineWidth,
-        handGesture: false
+        eraser: tool === 'erase'
       });
-
       prevCoords.current = { x, y };
     });
   };
@@ -124,20 +120,20 @@ function Whiteboard({ socket, roomId, localId }) {
     prevCoords.current = null;
   };
 
-  // Clear the canvas locally
+  // Clear the entire canvas
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
   }, []);
 
-  // Handle clear button: clear locally and emit event
+  // Handle clear button: clear locally and notify others
   const handleClear = () => {
     clearCanvas();
     socket.emit('clearCanvas', { roomId, senderId: localId });
   };
 
-  // Toggle the tool mode between "draw" and "erase"
+  // Toggle between drawing and eraser modes
   const toggleEraser = () => {
     setTool((prev) => (prev === 'draw' ? 'erase' : 'draw'));
   };
@@ -145,24 +141,23 @@ function Whiteboard({ socket, roomId, localId }) {
   return (
     <div style={styles.whiteboardContainer}>
       <div style={styles.tools}>
-        <label>Color: </label>
+        <label>{tool === 'draw' ? 'Color:' : 'Eraser Size:'}</label>
         <input 
           type="color" 
           value={color} 
           onChange={(e) => setColor(e.target.value)}
           aria-label="Select drawing color"
-          disabled={tool === 'erase'}  // Disable color picker in eraser mode
+          disabled={tool === 'erase'} // Disable color picker in eraser mode
         />
-        <label>Line Width: </label>
+        <label>Line Width:</label>
         <input
           type="range"
           min="1"
-          max="10"
+          max="20"
           value={lineWidth}
           onChange={(e) => setLineWidth(Number(e.target.value))}
-          aria-label="Adjust line width"
+          aria-label={tool === 'draw' ? "Adjust line width" : "Adjust eraser size"}
         />
-        {/* Eraser button */}
         <button 
           onClick={toggleEraser}
           style={tool === 'erase' ? styles.activeEraserButton : styles.eraserButton}
