@@ -6,7 +6,7 @@ import Whiteboard from './Whiteboard';
 import Chat from './Chat';
 import HandGesture from './HandGesture';
 
-const SERVER_URL = 'https://collabboard22.onrender.com'; // Adjust as needed
+const SERVER_URL = 'https://collabboard22.onrender.com'; // Adjust to your server URL
 
 function Room() {
   const { roomId } = useParams();
@@ -18,10 +18,10 @@ function Room() {
 
   useEffect(() => {
     const newSocket = io(SERVER_URL);
-    newSocket.emit('joinRoom', roomId);
     newSocket.on('connect', () => {
       setLocalId(newSocket.id);
     });
+    newSocket.emit('joinRoom', roomId);
     setSocket(newSocket);
     return () => newSocket.disconnect();
   }, [roomId]);
@@ -36,9 +36,7 @@ function Room() {
 
   const handleGesture = (gesture) => {
     setGestureStatus(gesture);
-    console.log('Gesture detected:', gesture);
     if (gesture === 'clear') {
-      console.log('Clearing drawing...');
       socket && socket.emit('clearCanvas', { roomId, senderId: localId });
     }
   };
@@ -60,12 +58,11 @@ function Room() {
       </header>
       <div style={styles.content}>
         <div style={{ flex: 1, marginRight: '10px' }}>
-          {/* Pass localId to Whiteboard */}
           <Whiteboard socket={socket} roomId={roomId} localId={localId} />
         </div>
         {handGestureMode && (
           <div style={{ flex: 1 }}>
-            <HandGesture socket={socket} roomId={roomId} onGestureDetected={handleGesture} />
+            <HandGesture socket={socket} roomId={roomId} onGestureDetected={handleGesture} localId={localId} />
           </div>
         )}
         <div style={{ flex: 1 }}>

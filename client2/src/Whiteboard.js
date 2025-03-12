@@ -16,7 +16,6 @@ function Whiteboard({ socket, roomId, localId }) {
     canvas.height = 480;
     canvas.style.width = '640px';
     canvas.style.height = '480px';
-
     const context = canvas.getContext('2d');
     context.lineCap = 'round';
     context.strokeStyle = color;
@@ -25,12 +24,12 @@ function Whiteboard({ socket, roomId, localId }) {
 
     // Listen for remote draw events
     socket.on('draw', (data) => {
-      // Ignore events that originated from this client
-      if (data.senderId && data.senderId === localId) return;
+      // For normal mouse-drawn events, ignore if it comes from this client
+      // Always process handGesture events
+      if (!data.handGesture && data.senderId && data.senderId === localId) return;
       drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);
     });
 
-    // Listen for clear events
     socket.on('clearCanvas', () => {
       clearCanvas();
     });
@@ -64,7 +63,7 @@ function Whiteboard({ socket, roomId, localId }) {
     contextRef.current.lineTo(x, y);
     contextRef.current.stroke();
 
-    // Emit drawing event with senderId
+    // Emit mouse-drawn event (handGesture flag is false)
     socket.emit('draw', {
       roomId,
       senderId: localId,
@@ -73,7 +72,8 @@ function Whiteboard({ socket, roomId, localId }) {
       x,
       y,
       color,
-      lineWidth
+      lineWidth,
+      handGesture: false
     });
 
     prevCoords.current = { x, y };
