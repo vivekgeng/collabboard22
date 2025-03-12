@@ -63,10 +63,16 @@ function Room() {
     setHandGestureMode(prev => !prev);
   }, []);
 
+  // When a gesture is detected from hand tracking:
+  // - If the gesture is 'clear', we emit a clearCanvas event.
+  // - If the gesture is 'disable', we automatically disable hand gesture mode.
   const handleGesture = useCallback((gesture) => {
     setGestureStatus(gesture);
     if (gesture === 'clear' && socket) {
       socket.emit('clearCanvas', { roomId, senderId: localId });
+    }
+    if (gesture === 'disable') {
+      setHandGestureMode(false);
     }
   }, [socket, roomId, localId]);
 
@@ -174,11 +180,7 @@ const styles = {
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: '0.5rem',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#218838'
-    }
+    gap: '0.5rem'
   },
   activeGestureButton: {
     backgroundColor: '#dc3545',
@@ -189,11 +191,7 @@ const styles = {
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: '0.5rem',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#c82333'
-    }
+    gap: '0.5rem'
   },
   leaveButton: {
     backgroundColor: '#4F81E1',
@@ -204,23 +202,14 @@ const styles = {
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: '0.5rem',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#3a6db7'
-    }
+    gap: '0.5rem'
   },
   mainContent: {
     flex: 1,
     display: 'grid',
     gridTemplateColumns: '2fr 1fr',
     gap: '1rem',
-    padding: '1rem',
-    overflow: 'hidden',
-    '@media (max-width: 768px)': {
-      gridTemplateColumns: '1fr',
-      gridTemplateRows: 'auto auto'
-    }
+    padding: '1rem'
   },
   whiteboardSection: {
     position: 'relative',

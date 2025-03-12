@@ -12,44 +12,35 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
   const animationFrameRef = useRef(null);
   const abortController = useRef(new AbortController());
 
-  // Gesture detection based on landmarks
+  // Gesture detection function – returns 'draw', 'stop', 'clear', or 'disable'
   const detectGesture = useCallback((landmarks, handedness) => {
     const FINGER_THRESHOLD = 0.07;
     const THUMB_THRESHOLD = 0.05;
-    // Using handedness for info only; we'll mirror for both
-    const isRightHand = handedness === 'Right';
-
-    const indexTip = landmarks[8];
-    const indexDip = landmarks[6];
-    const middleTip = landmarks[12];
-    const middleDip = landmarks[10];
-    const thumbTip = landmarks[4];
-    const thumbIp = landmarks[3];
-
-    const indexExtended = indexTip.y < indexDip.y - FINGER_THRESHOLD;
-    const middleExtended = middleTip.y < middleDip.y - FINGER_THRESHOLD;
-    const thumbExtended = Math.abs(thumbTip.x - thumbIp.x) > THUMB_THRESHOLD;
-
     let extendedFingers = 0;
     const fingers = [
-      { tip: 8, dip: 6 }, { tip: 12, dip: 10 },
-      { tip: 16, dip: 14 }, { tip: 20, dip: 18 }
+      { tip: 8, dip: 6 },
+      { tip: 12, dip: 10 },
+      { tip: 16, dip: 14 },
+      { tip: 20, dip: 18 }
     ];
-    
     fingers.forEach(({ tip, dip }) => {
-      if (landmarks[tip].y < landmarks[dip].y - FINGER_THRESHOLD) extendedFingers++;
+      if (landmarks[tip].y < landmarks[dip].y - FINGER_THRESHOLD) {
+        extendedFingers++;
+      }
     });
-
+    const thumbExtended = Math.abs(landmarks[4].x - landmarks[3].x) > THUMB_THRESHOLD;
     let gesture = '';
-    if (extendedFingers === 1 && indexExtended && !thumbExtended) {
+    // New: if exactly three fingers (excluding thumb) are extended, set gesture to 'disable'
+    if (extendedFingers === 3) {
+      gesture = 'disable';
+    } else if (extendedFingers === 1 && !thumbExtended) {
       gesture = 'draw';
-    } else if (extendedFingers === 2 && indexExtended && middleExtended) {
+    } else if (extendedFingers === 2) {
       gesture = 'stop';
     } else if (extendedFingers === 0 && thumbExtended) {
       gesture = 'clear';
     }
-
-    return { gesture, isRightHand };
+    return { gesture };
   }, []);
 
   useEffect(() => {
@@ -88,10 +79,10 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         const videoCtx = videoCanvasRef.current.getContext('2d');
         const drawCtx = drawingCanvasRef.current.getContext('2d');
         
-        // Clear video overlay and draw mirrored video feed
+        // Draw mirrored video feed
         videoCtx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
         videoCtx.save();
-        videoCtx.scale(-1, 1); // Mirror the video feed
+        videoCtx.scale(-1, 1);
         videoCtx.drawImage(results.image, -640, 0);
         videoCtx.restore();
 
@@ -112,7 +103,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
 
             // Draw hand landmarks for debugging
             drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, {
-              color: '#00FF00',
+              color: handedness === 'Right' ? '#00FF00' : '#FF0000',
               lineWidth: 2
             });
           });
@@ -131,27 +122,21 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     initHandTracking();
   }, [onGestureDetected, detectGesture]);
 
-  // Process drawing events with a distance threshold to avoid "spilling"
+  // Process drawing: mirror the x-coordinate so drawing aligns with the mirrored video feed
   const processDrawing = useCallback((landmarks, gesture) => {
     const canvas = drawingCanvasRef.current;
     if (!canvas) return;
-    
-    // Get normalized coordinates (0-1)
     const rawX = landmarks[8].x;
     const rawY = landmarks[8].y;
-
-    // Mirror the x-coordinate always (to match video mirroring)
-    const canvasX = canvas.width - (rawX * canvas.width);
+    const canvasX = canvas.width - (rawX * canvas.width); // mirror x
     const canvasY = rawY * canvas.height;
-
     const drawCtx = canvas.getContext('2d');
-    const MIN_DISTANCE = 2; // Minimum movement in pixels required to draw
+    const MIN_DISTANCE = 2; // threshold to avoid extra dots
 
     switch (gesture) {
       case 'draw':
         animationFrameRef.current = requestAnimationFrame(() => {
           if (!prevCoords.current) {
-            // Start a new path at the current finger position
             prevCoords.current = { x: canvasX, y: canvasY };
             drawCtx.beginPath();
             drawCtx.moveTo(canvasX, canvasY);
@@ -159,18 +144,12 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
             drawCtx.lineWidth = 3;
             return;
           }
-          // Calculate the distance moved
           const dx = canvasX - prevCoords.current.x;
           const dy = canvasY - prevCoords.current.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
-          // Only draw if movement is significant
-          if (distance < MIN_DISTANCE) {
-            return;
-          }
-          // Draw line to the new position
+          if (distance < MIN_DISTANCE) return;
           drawCtx.lineTo(canvasX, canvasY);
           drawCtx.stroke();
-          // Emit drawing data to other clients
           socket?.emit('draw', {
             roomId,
             senderId: localId,
