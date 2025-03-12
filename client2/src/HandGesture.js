@@ -1,129 +1,97 @@
 // HandGesture.js
 import React, { useEffect, useRef } from 'react';
 import { Hands } from '@mediapipe/hands';
-import * as drawingUtils from '@mediapipe/drawing_utils';
 import * as cam from '@mediapipe/camera_utils';
 
 function HandGesture({ onGestureDetected, socket, roomId, localId }) {
-  const videoRef = useRef(null);
-  const videoCanvasRef = useRef(null);    // For video feed and landmarks
-  const drawingCanvasRef = useRef(null);    // For persistent drawing overlay
-  const prevCoords = useRef(null);          // For storing previous finger position
-  const lastDrawTime = useRef(0);           // For throttling drawing events
+  const videoRef = useRef(null);           // Hidden video element for hand detection
+  const drawingCanvasRef = useRef(null);     // Canvas for drawing based on hand gestures
+  const prevCoords = useRef(null);           // Previous index finger coordinates
+  const lastProcessTime = useRef(0);         // Throttling timer
 
   useEffect(() => {
     if (!videoRef.current) return;
 
-    // Initialize Mediapipe Hands with lower complexity to reduce lag.
+    // Initialize Mediapipe Hands
     const hands = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      locateFile: (file) =>
+        `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
     hands.setOptions({
-      maxNumHands: 1,          // Only process one hand
-      modelComplexity: 0,      // Lower complexity model for speed
+      maxNumHands: 1,
+      modelComplexity: 1,
       minDetectionConfidence: 0.7,
       minTrackingConfidence: 0.7,
     });
 
     hands.onResults(onResults);
 
-    // Lower resolution to reduce processing load.
+    // Use lower resolution to reduce processing
     const camera = new cam.Camera(videoRef.current, {
       onFrame: async () => {
-        try {
-          await hands.send({ image: videoRef.current });
-        } catch (err) {
-          console.error('Error sending frame:', err);
-        }
+        const now = Date.now();
+        // Process frame at most every 100ms
+        if (now - lastProcessTime.current < 100) return;
+        lastProcessTime.current = now;
+        await hands.send({ image: videoRef.current });
       },
-      width: 320,    // Lower resolution width
-      height: 240,   // Lower resolution height
+      width: 320,
+      height: 240,
     });
     camera.start();
 
     function onResults(results) {
-      if (videoCanvasRef.current) {
-        const videoCtx = videoCanvasRef.current.getContext('2d');
-        // Clear and draw video image
-        videoCtx.save();
-        videoCtx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
-        videoCtx.drawImage(results.image, 0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
+      // Get the drawing canvas and its context
+      if (!drawingCanvasRef.current) return;
+      const canvas = drawingCanvasRef.current;
+      const ctx = canvas.getContext('2d');
 
-        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-          // Use the first detected hand
-          const landmarks = results.multiHandLandmarks[0];
-          const canvasWidth = videoCanvasRef.current.width;
-          const canvasHeight = videoCanvasRef.current.height;
+      // (Optional) Uncomment the next line to clear the canvas on each frame
+      // ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-          // Log handedness for debugging (optional)
-          if (results.multiHandedness && results.multiHandedness.length > 0) {
-            console.log("Detected hand label:", results.multiHandedness[0].classification[0].label);
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        // Use the first detected hand
+        const landmarks = results.multiHandLandmarks[0];
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+
+        // Mirror the x-coordinate (most webcam setups mirror the image)
+        const indexX = canvasWidth - (landmarks[8].x * canvasWidth);
+        const indexY = landmarks[8].y * canvasHeight;
+
+        // (Optional) Gesture detection can be added here using landmarks.
+        // For now, we assume that we always draw when a hand is detected.
+        if (onGestureDetected) onGestureDetected('draw');
+
+        // Draw a line from the previous coordinate to the current coordinate if available
+        if (prevCoords.current) {
+          ctx.beginPath();
+          ctx.moveTo(prevCoords.current.x, prevCoords.current.y);
+          ctx.lineTo(indexX, indexY);
+          ctx.strokeStyle = "#FF0000";
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          // Emit the drawing event to other clients if needed
+          if (socket) {
+            socket.emit('draw', {
+              roomId,
+              senderId: localId,
+              prevX: prevCoords.current.x,
+              prevY: prevCoords.current.y,
+              x: indexX,
+              y: indexY,
+              color: "#FF0000",
+              lineWidth: 3,
+              handGesture: true,
+            });
           }
-
-          // Heuristic: count extended fingers (simple version)
-          let extendedFingers = 0;
-          if (landmarks[8].y < landmarks[6].y) extendedFingers++;
-          if (landmarks[12].y < landmarks[10].y) extendedFingers++;
-          if (landmarks[16].y < landmarks[14].y) extendedFingers++;
-          if (landmarks[20].y < landmarks[18].y) extendedFingers++;
-          let thumbExtended = landmarks[4].x < landmarks[3].x;
-
-          let gesture = '';
-          if (extendedFingers === 1 && !thumbExtended) {
-            gesture = 'draw';
-          } else if (extendedFingers === 0 && thumbExtended) {
-            gesture = 'clear';
-          } else if (extendedFingers === 2) {
-            gesture = 'stop';
-          } else if (extendedFingers === 4) {
-            gesture = 'process';
-          }
-          if (onGestureDetected) onGestureDetected(gesture);
-
-          // Draw landmarks on video canvas for debugging
-          drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
-          drawingUtils.drawLandmarks(videoCtx, landmarks, { color: '#FF0000', lineWidth: 1 });
-
-          // Always mirror the x-coordinate for proper mapping
-          const rawX = landmarks[8].x * canvasWidth;
-          const indexX = canvasWidth - rawX;
-          const indexY = landmarks[8].y * canvasHeight;
-
-          // Throttle drawing to once every 50ms (adjust as needed)
-          const now = Date.now();
-          if (gesture === 'draw' && now - lastDrawTime.current > 50) {
-            lastDrawTime.current = now;
-            if (drawingCanvasRef.current) {
-              const drawCtx = drawingCanvasRef.current.getContext('2d');
-              if (prevCoords.current) {
-                drawCtx.beginPath();
-                drawCtx.moveTo(prevCoords.current.x, prevCoords.current.y);
-                drawCtx.lineTo(indexX, indexY);
-                drawCtx.strokeStyle = "#FF0000";
-                drawCtx.lineWidth = 3;
-                drawCtx.stroke();
-                // Emit drawing event with handGesture flag true
-                if (socket) {
-                  socket.emit('draw', {
-                    roomId,
-                    senderId: localId,
-                    prevX: prevCoords.current.x,
-                    prevY: prevCoords.current.y,
-                    x: indexX,
-                    y: indexY,
-                    color: "#FF0000",
-                    lineWidth: 3,
-                    handGesture: true
-                  });
-                }
-              }
-              prevCoords.current = { x: indexX, y: indexY };
-            }
-          }
-        } else {
-          prevCoords.current = null;
         }
-        videoCtx.restore();
+        // Update previous coordinates
+        prevCoords.current = { x: indexX, y: indexY };
+      } else {
+        // If no hand is detected, reset previous coordinates
+        prevCoords.current = null;
       }
     }
 
@@ -139,21 +107,14 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
 
   return (
     <div style={{ position: 'relative', width: '320px', height: '240px' }}>
-      {/* Hidden video element */}
+      {/* Hidden video element for detection */}
       <video ref={videoRef} style={{ display: 'none' }} />
-      {/* Canvas for video feed and landmarks */}
-      <canvas
-        ref={videoCanvasRef}
-        width="320"
-        height="240"
-        style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }}
-      />
-      {/* Canvas for persistent drawing */}
+      {/* Drawing canvas */}
       <canvas
         ref={drawingCanvasRef}
         width="320"
         height="240"
-        style={{ position: 'absolute', top: 0, left: 0, zIndex: 2, pointerEvents: 'none' }}
+        style={{ border: '1px solid #000' }}
       />
     </div>
   );
