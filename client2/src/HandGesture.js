@@ -12,20 +12,13 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
   const animationFrameRef = useRef(null);
   const abortController = useRef(new AbortController());
 
-  // Throttle gesture detection
-  const throttleGestureDetection = useCallback((fn, limit = 100) => {
-    let lastCall = 0;
-    return (...args) => {
-      const now = Date.now();
-      if (now - lastCall >= limit) {
-        lastCall = now;
-        fn(...args);
-      }
-    };
-  }, []);
-
-  const detectGesture = useCallback((landmarks) => {
+  // Fixed: Detect both hands and handle mirroring
+  const detectGesture = useCallback((landmarks, handedness) => {
     const FINGER_THRESHOLD = 0.08;
+    
+    // Flip X coordinates for mirror effect correction
+    const flipX = (x) => 1 - x; // Correct mirror effect
+    
     const indexExtended = landmarks[8].y < landmarks[6].y - FINGER_THRESHOLD;
     const middleExtended = landmarks[12].y < landmarks[10].y - FINGER_THRESHOLD;
     const ringExtended = landmarks[16].y < landmarks[14].y - FINGER_THRESHOLD;
@@ -35,11 +28,18 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     const extendedFingers = [indexExtended, middleExtended, ringExtended, pinkyExtended]
       .filter(Boolean).length;
 
-    if (extendedFingers === 1 && indexExtended && !thumbExtended) return 'draw';
-    if (extendedFingers === 0 && thumbExtended) return 'clear';
-    if (extendedFingers === 2 && indexExtended && middleExtended) return 'stop';
-    if (extendedFingers === 4) return 'process';
-    return '';
+    let gesture = '';
+    if (extendedFingers === 1 && indexExtended && !thumbExtended) {
+      gesture = 'draw';
+    } else if (extendedFingers === 0 && thumbExtended) {
+      gesture = 'clear';
+    } else if (extendedFingers === 2 && indexExtended && middleExtended) {
+      gesture = 'stop';
+    } else if (extendedFingers === 4) {
+      gesture = 'process';
+    }
+    
+    return { gesture, flipX };
   }, []);
 
   useEffect(() => {
@@ -50,8 +50,9 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
       });
 
+      // Fixed: Enable both hands detection
       hands.setOptions({
-        maxNumHands: 1,
+        maxNumHands: 2, // Changed from 1 to 2
         modelComplexity: 0,
         minDetectionConfidence: 0.7,
         minTrackingConfidence: 0.7,
@@ -72,43 +73,48 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
         height: 240
       });
 
-      hands.onResults(throttleGestureDetection((results) => {
+      hands.onResults((results) => {
         if (!videoCanvasRef.current) return;
 
         const videoCtx = videoCanvasRef.current.getContext('2d');
         videoCtx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
         videoCtx.drawImage(results.image, 0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
 
-        if (results.multiHandLandmarks?.[0]) {
-          const landmarks = results.multiHandLandmarks[0];
-          const gesture = detectGesture(landmarks);
-          
-          if (gesture) {
-            onGestureDetected?.(gesture);
-            processDrawing(landmarks, gesture);
-          }
+        if (results.multiHandLandmarks) {
+          // Fixed: Detect right hand and correct drawing direction
+          results.multiHandLandmarks.forEach((landmarks, index) => {
+            const handedness = results.multiHandedness[index];
+            const { gesture, flipX } = detectGesture(landmarks, handedness);
+            
+            // Prefer right hand or first detected hand
+            if (handedness.label === 'Right' || index === 0) {
+              if (gesture) {
+                onGestureDetected?.(gesture);
+                processDrawing(landmarks, gesture, flipX);
+              }
+            }
 
-          drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, 
-            { color: '#00FF00', lineWidth: 2 });
+            drawingUtils.drawConnectors(videoCtx, landmarks, Hands.HAND_CONNECTIONS, 
+              { color: '#00FF00', lineWidth: 2 });
+          });
         }
-      }));
+      });
 
       camera.start();
       return () => {
         abortController.current.abort();
         camera.stop();
         hands.close();
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
+        cancelAnimationFrame(animationFrameRef.current);
       };
     };
 
     initHandTracking();
-  }, [onGestureDetected, detectGesture, throttleGestureDetection]);
+  }, [onGestureDetected, detectGesture]);
 
-  const processDrawing = useCallback((landmarks, gesture) => {
-    const indexX = landmarks[8].x * videoCanvasRef.current.width;
+  // Fixed: Add flipX to correct drawing direction
+  const processDrawing = useCallback((landmarks, gesture, flipX) => {
+    const indexX = (flipX ? (1 - landmarks[8].x) : landmarks[8].x) * videoCanvasRef.current.width;
     const indexY = landmarks[8].y * videoCanvasRef.current.height;
 
     if (gesture === 'draw') {
