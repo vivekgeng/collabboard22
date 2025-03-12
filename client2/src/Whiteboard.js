@@ -10,7 +10,22 @@ function Whiteboard({ socket, roomId, localId }) {
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
 
-  // Optimized drawLine with Path2D and requestAnimationFrame
+  // Fixed coordinate calculation with scaling
+  const getCanvasCoordinates = useCallback((clientX, clientY) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  }, []);
+
+  // Optimized drawing function
   const drawLine = useCallback((prevX, prevY, x, y, strokeColor, strokeWidth) => {
     animationFrameRef.current = requestAnimationFrame(() => {
       const context = contextRef.current;
@@ -28,7 +43,7 @@ function Whiteboard({ socket, roomId, localId }) {
     });
   }, []);
 
-  // Memoized socket handler
+  // Socket event handler
   const handleDraw = useCallback((data) => {
     if (!data.handGesture && data.senderId === localId) return;
     drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);
@@ -36,6 +51,7 @@ function Whiteboard({ socket, roomId, localId }) {
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    // Set fixed internal resolution
     canvas.width = 640;
     canvas.height = 480;
     const context = canvas.getContext('2d');
@@ -44,35 +60,20 @@ function Whiteboard({ socket, roomId, localId }) {
     context.lineWidth = lineWidth;
     contextRef.current = context;
 
-    // Throttled clear function
-    const handleClear = () => {
-      context.clearRect(0, 0, canvas.width, canvas.height);
-    };
-
+    // Event listeners
     socket.on('draw', handleDraw);
-    socket.on('clearCanvas', handleClear);
+    socket.on('clearCanvas', () => context.clearRect(0, 0, canvas.width, canvas.height));
 
     return () => {
       socket.off('draw', handleDraw);
-      socket.off('clearCanvas', handleClear);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      socket.off('clearCanvas');
+      cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [socket, localId, drawLine, color, lineWidth, handleDraw]);
+  }, [socket, localId, color, lineWidth, handleDraw]);
 
-  useEffect(() => {
-    if (contextRef.current) {
-      contextRef.current.strokeStyle = color;
-      contextRef.current.lineWidth = lineWidth;
-    }
-  }, [color, lineWidth]);
-
+  // Drawing handlers
   const startDrawing = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
+    const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
     isDrawing.current = true;
     prevCoords.current = { x, y };
     contextRef.current.beginPath();
@@ -81,12 +82,8 @@ function Whiteboard({ socket, roomId, localId }) {
 
   const draw = (e) => {
     if (!isDrawing.current || !prevCoords.current) return;
-    
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
 
-    // Batch drawing updates
     animationFrameRef.current = requestAnimationFrame(() => {
       contextRef.current.lineTo(x, y);
       contextRef.current.stroke();
@@ -108,15 +105,14 @@ function Whiteboard({ socket, roomId, localId }) {
   };
 
   const endDrawing = () => {
-    if (!isDrawing.current) return;
     isDrawing.current = false;
     contextRef.current.closePath();
     prevCoords.current = null;
   };
 
+  // Clear functionality
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
   }, []);
@@ -186,7 +182,10 @@ const styles = {
   canvas: {
     background: '#ffffff',
     cursor: 'crosshair',
-    touchAction: 'none'
+    touchAction: 'none',
+    width: '100%',
+    height: 'auto',
+    aspectRatio: '4/3' // Maintain correct aspect ratio
   },
   clearButton: {
     padding: '8px 16px',
