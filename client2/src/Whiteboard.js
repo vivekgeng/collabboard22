@@ -9,6 +9,8 @@ function Whiteboard({ socket, roomId, localId }) {
   const animationFrameRef = useRef(null);
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
+  const [aiResponse, setAiResponse] = useState('');
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
 
   const getCanvasCoordinates = useCallback((clientX, clientY) => {
     const canvas = canvasRef.current;
@@ -42,20 +44,45 @@ function Whiteboard({ socket, roomId, localId }) {
     });
   }, []);
 
+  // Handle drawing events from socket
   const handleDraw = useCallback((data) => {
-    // Process drawing event even for hand gestures.
-    // Also ensure that coordinate values exist.
     if (!data.handGesture && data.senderId === localId) return;
     if (data.x == null || data.y == null) return;
+    
     const context = contextRef.current;
     if (!context) return;
+
     if (data.prevX == null || data.prevY == null) {
       context.beginPath();
       context.moveTo(data.x, data.y);
       return;
     }
+    
     drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);
   }, [localId, drawLine]);
+
+  // Handle AI responses
+  useEffect(() => {
+    const handleAIResponse = (data) => {
+      if (data.roomId === roomId) {
+        setAiResponse(data.response);
+        setIsLoadingAI(false);
+      }
+    };
+
+    const handleAIError = () => {
+      setAiResponse('Error processing request. Please try again.');
+      setIsLoadingAI(false);
+    };
+
+    socket?.on('aiResponse', handleAIResponse);
+    socket?.on('aiError', handleAIError);
+
+    return () => {
+      socket?.off('aiResponse', handleAIResponse);
+      socket?.off('aiError', handleAIError);
+    };
+  }, [socket, roomId]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -67,12 +94,12 @@ function Whiteboard({ socket, roomId, localId }) {
     context.lineWidth = lineWidth;
     contextRef.current = context;
 
-    socket.on('draw', handleDraw);
-    socket.on('clearCanvas', () => context.clearRect(0, 0, canvas.width, canvas.height));
+    socket?.on('draw', handleDraw);
+    socket?.on('clearCanvas', () => context.clearRect(0, 0, canvas.width, canvas.height));
 
     return () => {
-      socket.off('draw', handleDraw);
-      socket.off('clearCanvas');
+      socket?.off('draw', handleDraw);
+      socket?.off('clearCanvas');
       cancelAnimationFrame(animationFrameRef.current);
     };
   }, [socket, localId, color, lineWidth, handleDraw]);
@@ -93,7 +120,7 @@ function Whiteboard({ socket, roomId, localId }) {
       contextRef.current.lineTo(x, y);
       contextRef.current.stroke();
 
-      socket.emit('draw', {
+      socket?.emit('draw', {
         roomId,
         senderId: localId,
         prevX: prevCoords.current.x,
@@ -123,7 +150,7 @@ function Whiteboard({ socket, roomId, localId }) {
 
   const handleClear = () => {
     clearCanvas();
-    socket.emit('clearCanvas', { roomId, senderId: localId });
+    socket?.emit('clearCanvas', { roomId, senderId: localId });
   };
 
   return (
@@ -168,7 +195,17 @@ function Whiteboard({ socket, roomId, localId }) {
       <div style={styles.aiContainer}>
         <div style={styles.aiHeader}>AI Answers</div>
         <div style={styles.aiContent}>
-          <p style={styles.placeholderText}>AI-generated answers will appear here...</p>
+          {isLoadingAI ? (
+            <div style={styles.loadingContainer}>
+              <div style={styles.spinner}></div>
+              <p>Analyzing problem...</p>
+            </div>
+          ) : (
+            <div 
+              style={styles.responseText}
+              dangerouslySetInnerHTML={{ __html: aiResponse || 'Draw a math problem and pinch to analyze' }}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -207,7 +244,10 @@ const styles = {
     color: '#fff',
     border: 'none',
     borderRadius: '4px',
-    transition: 'opacity 0.2s'
+    transition: 'opacity 0.2s',
+    ':hover': {
+      opacity: 0.8
+    }
   },
   aiContainer: {
     borderTop: '2px solid #4F81E1',
@@ -230,6 +270,26 @@ const styles = {
     overflowY: 'auto',
     fontSize: '0.9rem',
     lineHeight: '1.5'
+  },
+  loadingContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    gap: '0.5rem'
+  },
+  spinner: {
+    width: '30px',
+    height: '30px',
+    border: '3px solid #f3f3f3',
+    borderTop: '3px solid #3498db',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite'
+  },
+  responseText: {
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word'
   },
   placeholderText: {
     color: '#666',

@@ -1,1 +1,23 @@
 {"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-13T12:36:12.424Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-13T18:55:13.221Z"}
+{"level":"info","message":"New connection: EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:56:09.743Z"}
+{"level":"info","message":"Socket EaMe3t3EyTTfuzOFAAAC joined room: i3q6qg","timestamp":"2025-03-13T18:56:09.745Z"}
+{"level":"info","message":"New connection: fBhSIqedkb3i-PfzAAAF","timestamp":"2025-03-13T18:56:18.422Z"}
+{"level":"info","message":"Socket fBhSIqedkb3i-PfzAAAF joined room: i3q6qg","timestamp":"2025-03-13T18:56:18.424Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:14.548Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:14.661Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:14.662Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:14.753Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:14.853Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:14.952Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:15.052Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:58.891Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:58.952Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:59.017Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:59.059Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:59.134Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:59.366Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:57:59.424Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by fBhSIqedkb3i-PfzAAAF","timestamp":"2025-03-13T18:58:14.574Z"}
+{"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:58:32.095Z"}
+{"level":"info","message":"Disconnected: EaMe3t3EyTTfuzOFAAAC (transport close)","timestamp":"2025-03-13T19:00:06.541Z"}

@@ -1,8 +1,16 @@
 {
   "dependencies": {
+    "@google/generative-ai": "^0.24.0",
     "@mediapipe/camera_utils": "^0.3.1675466862",
     "@mediapipe/drawing_utils": "^0.3.1675466124",
     "@mediapipe/hands": "^0.4.1675469240",
-    "negotiator": "^1.0.0"
+    "compression": "^1.8.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "negotiator": "^1.0.0",
+    "socket.io": "^4.8.1",
+    "winston": "^3.17.0"
   }
 }
