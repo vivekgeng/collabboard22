@@ -18,7 +18,6 @@ function Room() {
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(false);
 
-  // Socket connection with error handling
   useEffect(() => {
     const newSocket = io(SERVER_URL, {
       transports: ['websocket'],
@@ -213,23 +212,28 @@ const styles = {
   mainContent: {
     flex: 1,
     display: 'grid',
-    gridTemplateColumns: '2fr 1fr',
+    gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
+    gridTemplateRows: '1fr auto',
     gap: '1rem',
     padding: '1rem',
-    overflow: 'hidden',
+    height: 'calc(100vh - 80px)',
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
-      gridTemplateRows: 'auto auto'
+      gridTemplateRows: 'auto auto auto'
     }
   },
   whiteboardSection: {
-    position: 'relative',
+    gridRow: '1 / 3',
+    display: 'flex',
+    flexDirection: 'column',
     backgroundColor: 'white',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     overflow: 'hidden'
   },
   gestureSection: {
+    gridColumn: 2,
+    gridRow: '1 / 2',
     display: 'flex',
     flexDirection: 'column',
     gap: '1rem',
@@ -239,6 +243,8 @@ const styles = {
     padding: '1rem'
   },
   chatSection: {
+    gridColumn: 2,
+    gridRow: '2 / 3',
     backgroundColor: 'white',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',

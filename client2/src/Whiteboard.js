@@ -10,7 +10,6 @@ function Whiteboard({ socket, roomId, localId }) {
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
 
-  // Fixed coordinate calculation with scaling
   const getCanvasCoordinates = useCallback((clientX, clientY) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -25,7 +24,6 @@ function Whiteboard({ socket, roomId, localId }) {
     };
   }, []);
 
-  // Optimized drawing function
   const drawLine = useCallback((prevX, prevY, x, y, strokeColor, strokeWidth) => {
     animationFrameRef.current = requestAnimationFrame(() => {
       const context = contextRef.current;
@@ -43,7 +41,6 @@ function Whiteboard({ socket, roomId, localId }) {
     });
   }, []);
 
-  // Socket event handler
   const handleDraw = useCallback((data) => {
     if (!data.handGesture && data.senderId === localId) return;
     drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);
@@ -51,7 +48,6 @@ function Whiteboard({ socket, roomId, localId }) {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    // Set fixed internal resolution
     canvas.width = 640;
     canvas.height = 480;
     const context = canvas.getContext('2d');
@@ -60,7 +56,6 @@ function Whiteboard({ socket, roomId, localId }) {
     context.lineWidth = lineWidth;
     contextRef.current = context;
 
-    // Event listeners
     socket.on('draw', handleDraw);
     socket.on('clearCanvas', () => context.clearRect(0, 0, canvas.width, canvas.height));
 
@@ -71,7 +66,6 @@ function Whiteboard({ socket, roomId, localId }) {
     };
   }, [socket, localId, color, lineWidth, handleDraw]);
 
-  // Drawing handlers
   const startDrawing = (e) => {
     const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
     isDrawing.current = true;
@@ -110,7 +104,6 @@ function Whiteboard({ socket, roomId, localId }) {
     prevCoords.current = null;
   };
 
-  // Clear functionality
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
@@ -161,11 +154,9 @@ function Whiteboard({ socket, roomId, localId }) {
         role="img"
       />
 
-      {/* AI Answers Box */}
       <div style={styles.aiContainer}>
         <div style={styles.aiHeader}>AI Answers</div>
         <div style={styles.aiContent}>
-          {/* AI responses will be displayed here */}
           <p style={styles.placeholderText}>AI-generated answers will appear here...</p>
         </div>
       </div>
@@ -175,12 +166,11 @@ function Whiteboard({ socket, roomId, localId }) {
 
 const styles = {
   whiteboardContainer: {
-    flex: 2,
+    flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    borderRight: '1px solid #ccc',
-    position: 'relative',
-    height: '100vh'
+    height: '100%',
+    position: 'relative'
   },
   tools: {
     padding: '10px',
@@ -215,6 +205,7 @@ const styles = {
     borderTop: '2px solid #4F81E1',
     backgroundColor: '#f8f9fa',
     height: '150px',
+    minHeight: '150px',
     display: 'flex',
     flexDirection: 'column'
   },
