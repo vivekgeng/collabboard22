@@ -22,7 +22,7 @@ const logger = winston.createLogger({
   ]
 });
 
-// Initialize Gemini AI with error handling
+// Initialize Gemini AI
 let genAI;
 try {
   genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -79,7 +79,9 @@ const validateRoomId = (roomId) => {
 io.on('connection', (socket) => {
   logger.info(`New connection: ${socket.id}`);
 
-  // Room joining handler
+  // ---------------------------
+  // ROOM JOINING HANDLER (UNCHANGED)
+  // ---------------------------
   socket.on('joinRoom', (roomId) => {
     try {
       if (!validateRoomId(roomId)) {
@@ -101,7 +103,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  // AI Processing Handler (NEW AND IMPROVED)
+  // ---------------------------
+  // UPDATED AI PROCESSING HANDLER (CRITICAL FIX HERE)
+  // ---------------------------
   socket.on('processWithAI', async (data) => {
     if (!data?.image || !validateRoomId(data.roomId)) {
       logger.error('Invalid AI request format');
@@ -124,11 +128,17 @@ io.on('connection', (socket) => {
         throw new Error('Invalid image data format');
       }
 
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-pro-vision",
-        generationConfig: { 
+      // CORRECTED MODEL NAME (gemini-1.5-flash)
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: {
           maxOutputTokens: 1000,
-          temperature: 0.9
+          temperature: 0.5
+        },
+        systemInstruction: {
+          parts: [{ 
+            text: "You are a math expert. Analyze drawn equations and provide step-by-step solutions in simple language." 
+          }]
         }
       });
 
@@ -136,7 +146,7 @@ io.on('connection', (socket) => {
       
       const result = await model.generateContent(
         [
-          data.prompt,
+          "Analyze this drawn math problem and provide step-by-step solution:",
           {
             inlineData: {
               data: imageParts[1],
@@ -162,10 +172,16 @@ io.on('connection', (socket) => {
     } catch (error) {
       clearTimeout(timeoutId);
       logger.error(`AI processing failed: ${error.message}`);
-      const errorMessage = error.name === 'AbortError' ? 
-        'Request timed out' : 
-        error.message || 'Failed to process request';
       
+      let errorMessage = 'Failed to process request';
+      if (error.message.includes('quota')) {
+        errorMessage = 'API quota exceeded';
+      } else if (error.message.includes('invalid')) {
+        errorMessage = 'Invalid image format';
+      } else if (error.name === 'AbortError') {
+        errorMessage = 'Request timed out';
+      }
+
       socket.emit('aiError', {
         roomId: data.roomId,
         message: errorMessage
@@ -173,13 +189,44 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Existing handlers (draw, chatMessage, clearCanvas) remain same
-  // ... [Keep existing drawing and chat handlers unchanged] ...
+  // ---------------------------
+  // EXISTING HANDLERS (UNCHANGED)
+  // ---------------------------
+  socket.on('draw', (data) => {
+    if (!data || !validateRoomId(data.roomId)) return;
+    try {
+      io.to(data.roomId).emit('draw', data);
+    } catch (error) {
+      logger.error(`Draw event error: ${error.message}`);
+    }
+  });
 
-  // Disconnection handler
+  socket.on('chatMessage', (msgData) => {
+    if (!msgData?.message || !validateRoomId(msgData.roomId)) return;
+    try {
+      const sanitizedMessage = msgData.message.substring(0, 200);
+      const finalData = {
+        ...msgData,
+        message: sanitizedMessage,
+        timestamp: Date.now()
+      };
+      io.to(msgData.roomId).emit('chatMessage', finalData);
+    } catch (error) {
+      logger.error(`Chat message error: ${error.message}`);
+    }
+  });
+
+  socket.on('clearCanvas', (data) => {
+    if (!validateRoomId(data.roomId)) return;
+    try {
+      io.to(data.roomId).emit('clearCanvas', data);
+    } catch (error) {
+      logger.error(`Clear canvas error: ${error.message}`);
+    }
+  });
+
   socket.on('disconnect', (reason) => {
     logger.info(`Disconnected: ${socket.id} (${reason})`);
-    
     Array.from(socket.rooms).forEach(roomId => {
       if (roomId !== socket.id && rooms.has(roomId)) {
         const count = rooms.get(roomId) - 1;
@@ -199,7 +246,7 @@ app.use((err, req, res, next) => {
 // Start server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
+  logger.info(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
 
 // Graceful shutdown
