@@ -212,11 +212,7 @@ io.on('connection', (socket) => {
         message: sanitizedMessage,
         timestamp: Date.now()
       };
-      socket.broadcast.to(msgData.roomId).emit('chatMessage', {
-        ...finalData,
-        senderId: socket.id // Include sender ID
-      });
-    
+      io.to(msgData.roomId).emit('chatMessage', finalData);
     } catch (error) {
       logger.error(`Chat message error: ${error.message}`);
     }
