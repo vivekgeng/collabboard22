@@ -161,11 +161,6 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     } catch (error) {
       console.error('AI submission failed:', error);
     }
-    
-    if (!canvas || canvas.width === 0 || canvas.height === 0) {
-      console.error('Canvas is empty');
-      return;
-    }
   }, [socket, roomId]);
 
   // Main hand tracking setup
