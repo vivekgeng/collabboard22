@@ -1,18 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 function Chat({ socket, roomId }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [username, setUsername] = useState('');
+  const messagesEndRef = useRef(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   useEffect(() => {
-    // Listen for incoming chat messages
-    socket.on('chatMessage', (msgData) => {
-      setMessages((prev) => [...prev, msgData]);
-    });
+    scrollToBottom();
+  }, [messages]);
 
+  useEffect(() => {
+    const handleChatMessage = (msgData) => {
+      // Prevent duplicate messages using unique timestamp
+      setMessages(prev => {
+        const exists = prev.some(msg => 
+          msg.timestamp === msgData.timestamp && 
+          msg.senderId === msgData.senderId
+        );
+        return exists ? prev : [...prev, msgData];
+      });
+    };
+
+    socket.on('chatMessage', handleChatMessage);
     return () => {
-      socket.off('chatMessage');
+      socket.off('chatMessage', handleChatMessage);
     };
   }, [socket]);
 
@@ -22,11 +39,12 @@ function Chat({ socket, roomId }) {
       roomId,
       username: username || 'Anonymous',
       message: input,
-      time: new Date().toLocaleTimeString()
+      time: new Date().toLocaleTimeString(),
+      timestamp: Date.now(),  // Unique identifier
+      senderId: socket.id     // Add sender ID to prevent duplicates
     };
+    
     socket.emit('chatMessage', msgData);
-    // Also add to our own chat
-    setMessages((prev) => [...prev, msgData]);
     setInput('');
   };
 
@@ -44,11 +62,12 @@ function Chat({ socket, roomId }) {
       </div>
       <div style={styles.messages}>
         {messages.map((msg, idx) => (
-          <div key={idx} style={styles.message}>
+          <div key={`${msg.timestamp}-${msg.senderId}`} style={styles.message}>
             <strong>{msg.username}:</strong> {msg.message}
             <div style={styles.time}>{msg.time}</div>
           </div>
         ))}
+        <div ref={messagesEndRef} />
       </div>
       <div style={styles.inputContainer}>
         <input
@@ -64,16 +83,19 @@ function Chat({ socket, roomId }) {
   );
 }
 
+// Updated styles with improved scrolling
 const styles = {
   chatContainer: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
+    height: '100%', // Ensure container takes full height
     padding: '0 10px'
   },
   participants: {
     backgroundColor: '#f5f5f5',
-    padding: '10px'
+    padding: '10px',
+    flexShrink: 0 // Prevent shrinking
   },
   nameInput: {
     width: '100%',
@@ -85,7 +107,8 @@ const styles = {
     overflowY: 'auto',
     margin: '10px 0',
     border: '1px solid #ccc',
-    padding: '10px'
+    padding: '10px',
+    minHeight: 0 // Crucial for flex scrolling
   },
   message: {
     marginBottom: '10px'
@@ -96,7 +119,8 @@ const styles = {
   },
   inputContainer: {
     display: 'flex',
-    marginBottom: '10px'
+    marginBottom: '10px',
+    flexShrink: 0 // Keep input fixed at bottom
   },
   textInput: {
     flex: 1,
