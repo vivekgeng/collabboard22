@@ -261,17 +261,6 @@ io.on('connection', (socket) => {
       logger.error(`Clear canvas error: ${error.message}`);
     }
   });
-
-  socket.on('disconnect', (reason) => {
-    logger.info(`Disconnected: ${socket.id} (${reason})`);
-    Array.from(socket.rooms).forEach(roomId => {
-      if (roomId !== socket.id && rooms.has(roomId)) {
-        const count = rooms.get(roomId) - 1;
-        rooms.set(roomId, count);
-        if (count <= 0) rooms.delete(roomId);
-      }
-    });
-  });
 });
 
 // Error handling middleware
