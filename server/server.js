@@ -28,7 +28,7 @@ app.use(helmet());
 app.use(compression());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? ['https://your-frontend-domain.com']  // Replace with your actual production domain
+    ? ['https://collabboard22.vercel.app/']  // Replace with your actual production domain
     : 'http://localhost:3000',
   credentials: true
 }));
