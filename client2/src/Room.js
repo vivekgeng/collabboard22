@@ -1,7 +1,5 @@
-// Room.js
-import React from 'react'; // ← Missing this line
+import React, { useEffect, useState, useCallback } from 'react'; // ← Combined into single import
 import { ToastContainer, toast } from 'react-toastify';
-import React, { useEffect, useState, useCallback } from 'react';
 import io from 'socket.io-client';
 import { useParams, useNavigate } from 'react-router-dom';
 import 'react-toastify/dist/ReactToastify.css';
