@@ -21,3 +21,5 @@
 {"level":"info","message":"Canvas cleared in i3q6qg by fBhSIqedkb3i-PfzAAAF","timestamp":"2025-03-13T18:58:14.574Z"}
 {"level":"info","message":"Canvas cleared in i3q6qg by EaMe3t3EyTTfuzOFAAAC","timestamp":"2025-03-13T18:58:32.095Z"}
 {"level":"info","message":"Disconnected: EaMe3t3EyTTfuzOFAAAC (transport close)","timestamp":"2025-03-13T19:00:06.541Z"}
+{"level":"info","message":"Gemini AI initialized successfully","timestamp":"2025-03-13T22:41:26.048Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-13T22:41:26.062Z"}

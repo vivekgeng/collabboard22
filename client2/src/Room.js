@@ -1,12 +1,15 @@
 // Room.js
+import React from 'react'; // ← Missing this line
+import { ToastContainer, toast } from 'react-toastify';
 import React, { useEffect, useState, useCallback } from 'react';
 import io from 'socket.io-client';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Whiteboard from './Whiteboard';
 import Chat from './Chat';
 import HandGesture from './HandGesture';
+// Add this at the VERY TOP of Room.js
+
 
 const SERVER_URL = 'https://collabboard22.onrender.com';
 
