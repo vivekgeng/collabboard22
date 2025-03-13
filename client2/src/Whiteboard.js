@@ -67,7 +67,7 @@ function Whiteboard({ socket, roomId, localId }) {
     
     contextRef.current.beginPath();
     contextRef.current.moveTo(x, y);
-    contextRef.current.strokeStyle = isEraser ? '#D3D3D3' : color;
+    contextRef.current.strokeStyle = isEraser ? '#FFFFFF' : color;
     contextRef.current.lineWidth = isEraser ? eraserSize : lineWidth;
   };
 
@@ -87,7 +87,7 @@ function Whiteboard({ socket, roomId, localId }) {
         prevY: prevCoords.current.y,
         x,
         y,
-        color: isEraser ? '#D3D3D3' : color,
+        color: isEraser ? '#FFFFFF' : color,
         lineWidth: isEraser ? eraserSize : lineWidth,
         handGesture: false
       });
@@ -248,7 +248,7 @@ const styles = {
     cursor: 'pointer'
   },
   canvas: {
-    background: '#D3D3D3',
+    background: '#ffffff',
     cursor: 'crosshair',
     touchAction: 'none',
     flex: 1,
