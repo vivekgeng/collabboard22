@@ -1,13 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react'; // ← Combined into single import
-import { ToastContainer, toast } from 'react-toastify';
+// Room.js
+import React, { useEffect, useState, useCallback } from 'react';
 import io from 'socket.io-client';
 import { useParams, useNavigate } from 'react-router-dom';
-import 'react-toastify/dist/ReactToastify.css';
 import Whiteboard from './Whiteboard';
 import Chat from './Chat';
 import HandGesture from './HandGesture';
-// Add this at the VERY TOP of Room.js
-
 
 const SERVER_URL = 'https://collabboard22.onrender.com';
 
@@ -20,7 +17,6 @@ function Room() {
   const [gestureStatus, setGestureStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(false);
-  const [participantsCount, setParticipantsCount] = useState(1);
 
   useEffect(() => {
     const newSocket = io(SERVER_URL, {
@@ -47,18 +43,6 @@ function Room() {
     newSocket.on('connect_error', () => {
       setConnectionError(true);
       setLoading(false);
-    });
-
-    newSocket.on('userActivity', (data) => {
-      setParticipantsCount(data.count);
-      toast.info(data.message, {
-        autoClose: 3000,
-        hideProgressBar: true
-      });
-    });
-
-    newSocket.on('roomStatus', (data) => {
-      setParticipantsCount(data.participants);
     });
 
     newSocket.emit('joinRoom', roomId);
@@ -108,19 +92,8 @@ function Room() {
 
   return (
     <div style={styles.container}>
-      <ToastContainer
-        position="bottom-right"
-        newestOnTop
-        closeButton={false}
-      />
-      
       <header style={styles.header}>
-        <div>
-          <h1 style={styles.title}>CollabBoard - Room: {roomId}</h1>
-          <div style={styles.participantCounter}>
-            👥 {participantsCount} active participants
-          </div>
-        </div>
+        <h1 style={styles.title}>CollabBoard - Room: {roomId}</h1>
         <div style={styles.buttonGroup}>
           <button 
             onClick={toggleHandGestureMode} 
@@ -186,14 +159,6 @@ const styles = {
     fontSize: '1.5rem',
     margin: 0,
     color: '#2c3e50'
-  },
-  participantCounter: {
-    backgroundColor: '#4F81E1',
-    color: 'white',
-    padding: '6px 12px',
-    borderRadius: '20px',
-    fontSize: '0.9rem',
-    marginTop: '0.5rem'
   },
   buttonGroup: {
     display: 'flex',

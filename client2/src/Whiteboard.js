@@ -52,8 +52,8 @@ function Whiteboard({ socket, roomId, localId }) {
 
   // Handle incoming drawing data
   const handleDraw = useCallback((data) => {
-    if (data.senderId === localId && data.handGesture) return;
-        const context = contextRef.current;
+    if (!data.handGesture && data.senderId === localId) return;
+    const context = contextRef.current;
     if (!context) return;
 
     drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);

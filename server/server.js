@@ -80,7 +80,7 @@ io.on('connection', (socket) => {
   logger.info(`New connection: ${socket.id}`);
 
   // ---------------------------
-  // UPDATED ROOM JOINING HANDLER
+  // ROOM JOINING HANDLER (UNCHANGED)
   // ---------------------------
   socket.on('joinRoom', (roomId) => {
     try {
@@ -88,54 +88,19 @@ io.on('connection', (socket) => {
         throw new Error('Invalid room ID format');
       }
 
-      const previousCount = rooms.get(roomId) || 0;
-      const newCount = previousCount + 1;
-      
       socket.join(roomId);
-      rooms.set(roomId, newCount);
-
-      // Notify existing users
-      socket.broadcast.to(roomId).emit('userActivity', {
-        type: 'join',
-        count: newCount,
-        message: `New user joined (${newCount} total)`
-      });
-
-      // Notify joining user
-      socket.emit('roomStatus', {
-        participants: newCount,
-        roomId
-      });
-
+      rooms.set(roomId, (rooms.get(roomId) || 0) + 1);
+      
       logger.info(`Socket ${socket.id} joined room: ${roomId}`);
+      socket.emit('roomStatus', { 
+        participants: rooms.get(roomId),
+        roomId 
+      });
 
     } catch (error) {
       logger.error(`Join room error: ${error.message}`);
       socket.emit('error', { message: error.message });
     }
-  });
-
-  // ---------------------------
-  // UPDATED DISCONNECT HANDLER
-  // ---------------------------
-  socket.on('disconnect', (reason) => {
-    logger.info(`Disconnected: ${socket.id} (${reason})`);
-    
-    Array.from(socket.rooms).forEach(roomId => {
-      if (roomId !== socket.id && rooms.has(roomId)) {
-        const newCount = rooms.get(roomId) - 1;
-        rooms.set(roomId, newCount);
-        
-        // Notify remaining users
-        io.to(roomId).emit('userActivity', {
-          type: 'leave',
-          count: newCount,
-          message: `User left (${newCount} remaining)`
-        });
-
-        if (newCount <= 0) rooms.delete(roomId);
-      }
-    });
   });
 
   // ---------------------------
@@ -247,7 +212,11 @@ io.on('connection', (socket) => {
         message: sanitizedMessage,
         timestamp: Date.now()
       };
-      io.to(msgData.roomId).emit('chatMessage', finalData);
+      socket.broadcast.to(msgData.roomId).emit('chatMessage', {
+        ...finalData,
+        senderId: socket.id // Include sender ID
+      });
+    
     } catch (error) {
       logger.error(`Chat message error: ${error.message}`);
     }
@@ -260,6 +229,17 @@ io.on('connection', (socket) => {
     } catch (error) {
       logger.error(`Clear canvas error: ${error.message}`);
     }
+  });
+
+  socket.on('disconnect', (reason) => {
+    logger.info(`Disconnected: ${socket.id} (${reason})`);
+    Array.from(socket.rooms).forEach(roomId => {
+      if (roomId !== socket.id && rooms.has(roomId)) {
+        const count = rooms.get(roomId) - 1;
+        rooms.set(roomId, count);
+        if (count <= 0) rooms.delete(roomId);
+      }
+    });
   });
 });
 
