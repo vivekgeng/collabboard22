@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -26,8 +27,8 @@ const app = express();
 app.use(helmet());
 app.use(compression());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://collabboard22.vercel.app/'] 
+  origin: process.env.NODE_ENV === 'production'
+    ? ['https://your-frontend-domain.com']  // Replace with your actual production domain
     : 'http://localhost:3000',
   credentials: true
 }));
@@ -45,8 +46,8 @@ const server = http.createServer(app);
 // Configure Socket.IO with production optimizations
 const io = new Server(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' 
-      ? ['https://collabboard22.vercel.app/'] 
+    origin: process.env.NODE_ENV === 'production'
+      ? ['https://your-frontend-domain.com']
       : 'http://localhost:3000',
     methods: ["GET", "POST"]
   },
@@ -62,7 +63,7 @@ const io = new Server(server, {
 const rooms = new Map();
 
 const validateRoomId = (roomId) => {
-  return typeof roomId === 'string' && roomId.length === 21; // Supabase-style ID validation
+  return typeof roomId === 'string' && roomId.length > 0; // Supabase-style ID validation
 };
 
 io.on('connection', (socket) => {
@@ -93,12 +94,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Drawing event handler
+  // Drawing event handler (emit to all clients including sender)
   socket.on('draw', (data) => {
     if (!data || !validateRoomId(data.roomId)) return;
     
     try {
-      socket.broadcast.to(data.roomId).volatile.emit('draw', data);
+      io.to(data.roomId).emit('draw', data);
       logger.debug(`Drawing event in ${data.roomId} from ${socket.id}`);
     } catch (error) {
       logger.error(`Draw event error: ${error.message}`);
@@ -124,12 +125,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Clear canvas handler
+  // Clear canvas handler (emit to all clients including sender)
   socket.on('clearCanvas', (data) => {
     if (!validateRoomId(data.roomId)) return;
 
     try {
-      socket.broadcast.to(data.roomId).emit('clearCanvas', data);
+      io.to(data.roomId).emit('clearCanvas', data);
       logger.info(`Canvas cleared in ${data.roomId} by ${socket.id}`);
     } catch (error) {
       logger.error(`Clear canvas error: ${error.message}`);

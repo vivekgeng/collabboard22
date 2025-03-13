@@ -6,7 +6,7 @@ import Whiteboard from './Whiteboard';
 import Chat from './Chat';
 import HandGesture from './HandGesture';
 
-const SERVER_URL = 'https://collabboard22.onrender.com';
+const SERVER_URL = 'http://localhost:5000';
 
 function Room() {
   const { roomId } = useParams();

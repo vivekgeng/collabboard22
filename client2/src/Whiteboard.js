@@ -25,6 +25,7 @@ function Whiteboard({ socket, roomId, localId }) {
   }, []);
 
   const drawLine = useCallback((prevX, prevY, x, y, strokeColor, strokeWidth) => {
+    if (prevX == null || prevY == null) return;
     animationFrameRef.current = requestAnimationFrame(() => {
       const context = contextRef.current;
       if (!context) return;
@@ -42,7 +43,17 @@ function Whiteboard({ socket, roomId, localId }) {
   }, []);
 
   const handleDraw = useCallback((data) => {
+    // Process drawing event even for hand gestures.
+    // Also ensure that coordinate values exist.
     if (!data.handGesture && data.senderId === localId) return;
+    if (data.x == null || data.y == null) return;
+    const context = contextRef.current;
+    if (!context) return;
+    if (data.prevX == null || data.prevY == null) {
+      context.beginPath();
+      context.moveTo(data.x, data.y);
+      return;
+    }
     drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);
   }, [localId, drawLine]);
 
@@ -196,10 +207,7 @@ const styles = {
     color: '#fff',
     border: 'none',
     borderRadius: '4px',
-    transition: 'opacity 0.2s',
-    ':hover': {
-      opacity: 0.8
-    }
+    transition: 'opacity 0.2s'
   },
   aiContainer: {
     borderTop: '2px solid #4F81E1',

@@ -10,8 +10,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "compression": "^1.8.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "socket.io": "^4.8.1"
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "negotiator": "^1.0.0",
+    "socket.io": "^4.8.1",
+    "winston": "^3.17.0"
   }
 }
