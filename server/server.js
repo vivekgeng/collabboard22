@@ -165,8 +165,10 @@ io.on('connection', (socket) => {
       io.to(data.roomId).emit('aiResponse', {
         roomId: data.roomId,
         response: text.replace(/\n/g, '<br>')
-                       .replace(/\*\*/g, '<strong>')
-                       .replace(/\*/g, '<em>')
+        .replace(/\*\*/g, '')    // Remove bold markers
+        .replace(/\*/g, '')      // Remove italics markers
+        .replace(/\\boxed{(.*?)}/g, '$1') // Clean LaTeX boxes
+        .replace(/\$/g, '')       // Remove dollar signs
       });
 
     } catch (error) {
