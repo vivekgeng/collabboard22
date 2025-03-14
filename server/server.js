@@ -192,6 +192,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('draw', (data) => {
+    
+    io.to(data.roomId).emit('draw', {
+      ...data,
+      compositeOperation: data.isErasing ? 'destination-out' : 'source-over'
+    });
+
     if (!validateDrawData(data)) {
       logger.warn(`Invalid draw data from ${socket.id}`);
       return;

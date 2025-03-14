@@ -125,7 +125,9 @@ function Whiteboard({ socket, roomId, localId }) {
       color: isErasing ? '#FFFFFF' : color,
       lineWidth: isErasing ? eraserSize : lineWidth,
       page: activePage,
-      isErasing
+      isErasing,
+      compositeOperation: isErasing ? 'destination-out' : 'source-over' // <-- ADD THIS
+
     });
 
     prevCoords.current = coords;
@@ -146,6 +148,7 @@ function Whiteboard({ socket, roomId, localId }) {
       const ctx = contextRefs.current[activePage];
       ctx.strokeStyle = data.color;
       ctx.lineWidth = data.lineWidth;
+      ctx.globalCompositeOperation = data.compositeOperation; // <-- ADD THIS LINE
       ctx.beginPath();
       ctx.moveTo(data.prevX, data.prevY);
       ctx.lineTo(data.x, data.y);

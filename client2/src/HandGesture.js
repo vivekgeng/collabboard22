@@ -20,6 +20,16 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
     genAI.current = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
   }, []);
 
+  useEffect(() => {
+    const context = contextRefs.current[activePage];
+    if (!context) return;
+  
+    context.strokeStyle = isErasing ? '#FFFFFF' : color;
+    context.lineWidth = isErasing ? eraserSize : lineWidth;
+    context.globalCompositeOperation = isErasing ? 'destination-out' : 'source-over';
+  
+  }, [isErasing, activePage, color, lineWidth, eraserSize]);
+
   // Gesture detection based on landmarks
   const detectGesture = useCallback((landmarks, handedness) => {
     const FINGER_THRESHOLD = 0.07;
