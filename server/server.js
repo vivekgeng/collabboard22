@@ -131,7 +131,7 @@ io.on('connection', (socket) => {
       }
 
       const model = genAI.getGenerativeModel({
-        model: "gemini-pro",
+        model: "gemini-1.5-flash",
         generationConfig: {
           maxOutputTokens: 1000,
           temperature: 0.5
