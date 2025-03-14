@@ -93,7 +93,7 @@ function Room() {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <h1 style={styles.title}>CollabBoard - Room: {roomId}</h1>
+        <h1 style={styles.title}>CollabAI - Room: {roomId}</h1>
         <div style={styles.buttonGroup}>
           <button 
             onClick={toggleHandGestureMode} 
