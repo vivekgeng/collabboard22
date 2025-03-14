@@ -76,6 +76,7 @@ function Whiteboard({ socket, roomId, localId }) {
     pdf.save(`${roomId}-whiteboard.pdf`);
   };
   save(`${roomId}-whiteboard.pdf`);
+  };
 
   // Drawing logic
   const getCanvasCoordinates = (e) => {
@@ -270,7 +271,7 @@ function Whiteboard({ socket, roomId, localId }) {
       </div>
     </div>
   );
-}
+
 
 const styles = {
   whiteboardContainer: {
