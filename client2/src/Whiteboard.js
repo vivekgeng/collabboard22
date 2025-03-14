@@ -49,16 +49,33 @@ function Whiteboard({ socket, roomId, localId }) {
   // PDF Generation
   const generatePDF = () => {
     const pdf = new jsPDF();
+    
     pages.forEach((page, index) => {
       if (index > 0) pdf.addPage();
-      const canvas = canvasRefs.current[index];
-      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      
+      // Create temporary canvas with white background
+      const originalCanvas = canvasRefs.current[index];
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = originalCanvas.width;
+      tempCanvas.height = originalCanvas.height;
+      
+      // Fill with white background
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.fillStyle = 'white';
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.drawImage(originalCanvas, 0, 0);
+      
+      // Add to PDF
+      const imgData = tempCanvas.toDataURL('image/jpeg', 1.0);
       const width = pdf.internal.pageSize.getWidth() - 20;
-      const height = (canvas.height * width) / canvas.width;
+      const height = (originalCanvas.height * width) / originalCanvas.width;
+      
       pdf.addImage(imgData, 'JPEG', 10, 10, width, height);
     });
+  
     pdf.save(`${roomId}-whiteboard.pdf`);
   };
+  save(`${roomId}-whiteboard.pdf`);
 
   // Drawing logic
   const getCanvasCoordinates = (e) => {
@@ -130,6 +147,14 @@ function Whiteboard({ socket, roomId, localId }) {
 
   // Tool handlers
   const handleEraserToggle = () => setIsErasing(!isErasing);
+  pages.forEach((_, index) => {
+    const ctx = contextRefs.current[index];
+    if (ctx) {
+      ctx.strokeStyle = !isErasing ? '#FFFFFF' : color;
+      ctx.lineWidth = !isErasing ? eraserSize : lineWidth;
+      ctx.globalCompositeOperation = !isErasing ? 'destination-out' : 'source-over';
+    }
+  });
 
   const handleClear = () => {
     const ctx = contextRefs.current[activePage];
@@ -192,7 +217,7 @@ function Whiteboard({ socket, roomId, localId }) {
           onClick={handleEraserToggle}
           style={isErasing ? styles.activeEraserButton : styles.eraserButton}
         >
-          {isErasing ? '✏️ Disable Eraser' : '🧹 Eraser'}
+          {isErasing ? '✏️ Disable Eraser' : '🧹 Eraser (Click to Activate)'}
         </button>
         
         {isErasing && (
