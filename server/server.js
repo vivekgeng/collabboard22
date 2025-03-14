@@ -8,7 +8,6 @@ const rateLimit = require('express-rate-limit');
 const winston = require('winston');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Configure logging
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -21,7 +20,6 @@ const logger = winston.createLogger({
   ]
 });
 
-// Initialize Gemini AI
 let genAI;
 try {
   genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -33,7 +31,6 @@ try {
 
 const app = express();
 
-// Security middleware
 app.use(helmet());
 app.use(compression());
 app.use(cors({
@@ -43,17 +40,14 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100
 });
 app.use(limiter);
 
-// Create HTTP server
 const server = http.createServer(app);
 
-// Configure Socket.IO
 const io = new Server(server, {
   cors: {
     origin: process.env.ALLOWED_ORIGINS ? 
@@ -67,7 +61,6 @@ const io = new Server(server, {
   pingTimeout: 5000
 });
 
-// Room state management
 const rooms = new Map();
 
 const validateRoomId = (roomId) => {
@@ -78,12 +71,12 @@ const validateDrawData = (data) => {
   return data && 
          typeof data.x === 'number' &&
          typeof data.y === 'number' &&
+         typeof data.page === 'number' &&
          data.x >= 0 && data.x <= 640 &&
          data.y >= 0 && data.y <= 480 &&
          validateRoomId(data.roomId);
 };
 
-// Socket.IO handlers
 io.on('connection', (socket) => {
   logger.info(`New connection: ${socket.id}`);
 
@@ -105,6 +98,18 @@ io.on('connection', (socket) => {
     } catch (error) {
       logger.error(`Join room error: ${error.message}`);
       socket.emit('error', { message: error.message });
+    }
+  });
+
+  socket.on('addPage', (data) => {
+    if (validateRoomId(data.roomId)) {
+      io.to(data.roomId).emit('addPage', data.page);
+    }
+  });
+
+  socket.on('removePage', (data) => {
+    if (validateRoomId(data.roomId)) {
+      io.to(data.roomId).emit('removePage', data.pageId);
     }
   });
 
@@ -192,26 +197,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('draw', (data) => {
-    
-    io.to(data.roomId).emit('draw', {
-      ...data,
-      compositeOperation: data.isErasing ? 'destination-out' : 'source-over'
-    });
-
     if (!validateDrawData(data)) {
       logger.warn(`Invalid draw data from ${socket.id}`);
-      return;
-    }
-    
-    if (typeof data.page !== 'number' || data.page < 0) {
-      logger.warn(`Invalid page number: ${data.page}`);
       return;
     }
 
     try {
       io.to(data.roomId).emit('draw', {
         ...data,
-        isErasing: data.isErasing || false
+        compositeOperation: data.isErasing ? 'destination-out' : 'source-over'
       });
     } catch (error) {
       logger.error(`Draw event error: ${error.message}`);
@@ -254,19 +248,16 @@ io.on('connection', (socket) => {
   });
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   logger.error(`Server error: ${err.stack}`);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Start server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   logger.info(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
 
-// Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received: closing server');
   server.close(() => {

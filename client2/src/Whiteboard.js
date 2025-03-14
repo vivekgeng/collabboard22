@@ -3,7 +3,6 @@ import { jsPDF } from 'jspdf';
 import DOMPurify from 'dompurify';
 
 function Whiteboard({ socket, roomId, localId }) {
-  // State management
   const [pages, setPages] = useState([{ id: Date.now() }]);
   const [activePage, setActivePage] = useState(0);
   const canvasRefs = useRef([]);
@@ -17,7 +16,6 @@ function Whiteboard({ socket, roomId, localId }) {
   const isDrawing = useRef(false);
   const prevCoords = useRef(null);
 
-  // Initialize canvases
   useEffect(() => {
     pages.forEach((_, index) => {
       const canvas = canvasRefs.current[index];
@@ -33,7 +31,6 @@ function Whiteboard({ socket, roomId, localId }) {
     });
   }, [pages.length, color, lineWidth]);
 
-  // Page management
   const addPage = () => {
     const newPage = { id: Date.now() };
     setPages(prev => [...prev, newPage]);
@@ -46,7 +43,6 @@ function Whiteboard({ socket, roomId, localId }) {
     setActivePage(prev => Math.max(0, prev - 1));
   };
 
-  // PDF Generation (Fixed)
   const generatePDF = () => {
     const pdf = new jsPDF();
     
@@ -73,7 +69,6 @@ function Whiteboard({ socket, roomId, localId }) {
     pdf.save(`${roomId}-whiteboard.pdf`);
   };
 
-  // Drawing logic
   const getCanvasCoordinates = (e) => {
     const canvas = canvasRefs.current[activePage];
     const rect = canvas.getBoundingClientRect();
@@ -83,7 +78,6 @@ function Whiteboard({ socket, roomId, localId }) {
     };
   };
 
-  // Fixed Eraser Toggle
   const handleEraserToggle = () => {
     setIsErasing(prev => {
       pages.forEach((_, index) => {
@@ -125,9 +119,7 @@ function Whiteboard({ socket, roomId, localId }) {
       color: isErasing ? '#FFFFFF' : color,
       lineWidth: isErasing ? eraserSize : lineWidth,
       page: activePage,
-      isErasing,
-      compositeOperation: isErasing ? 'destination-out' : 'source-over' // <-- ADD THIS
-
+      compositeOperation: isErasing ? 'destination-out' : 'source-over'
     });
 
     prevCoords.current = coords;
@@ -140,15 +132,16 @@ function Whiteboard({ socket, roomId, localId }) {
     prevCoords.current = null;
   };
 
-  // Socket handlers
   useEffect(() => {
     const handleDraw = (data) => {
-      if (data.senderId === localId || data.page !== activePage) return;
+      if (data.senderId === localId) return;
       
-      const ctx = contextRefs.current[activePage];
+      const ctx = contextRefs.current[data.page];
+      if (!ctx) return;
+
       ctx.strokeStyle = data.color;
       ctx.lineWidth = data.lineWidth;
-      ctx.globalCompositeOperation = data.compositeOperation; // <-- ADD THIS LINE
+      ctx.globalCompositeOperation = data.compositeOperation;
       ctx.beginPath();
       ctx.moveTo(data.prevX, data.prevY);
       ctx.lineTo(data.x, data.y);
@@ -157,9 +150,8 @@ function Whiteboard({ socket, roomId, localId }) {
 
     socket?.on('draw', handleDraw);
     return () => socket?.off('draw', handleDraw);
-  }, [socket, activePage, localId]);
+  }, [socket, localId]);
 
-  // Clear handler
   const handleClear = () => {
     const ctx = contextRefs.current[activePage];
     ctx.clearRect(0, 0, 640, 480);
@@ -276,7 +268,6 @@ function Whiteboard({ socket, roomId, localId }) {
   );
 }
 
-// Styles (Fixed Duplicates)
 const styles = {
   whiteboardContainer: {
     flex: 1,
