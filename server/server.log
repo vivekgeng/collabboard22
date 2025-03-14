@@ -23,3 +23,236 @@
 {"level":"info","message":"Disconnected: EaMe3t3EyTTfuzOFAAAC (transport close)","timestamp":"2025-03-13T19:00:06.541Z"}
 {"level":"info","message":"Gemini AI initialized successfully","timestamp":"2025-03-13T22:41:26.048Z"}
 {"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-13T22:41:26.062Z"}
+{"level":"info","message":"Gemini AI initialized successfully","timestamp":"2025-03-14T13:24:28.980Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-14T13:24:28.998Z"}
+{"level":"info","message":"New connection: 3Gt10VhZdDC77a4fAAAB","timestamp":"2025-03-14T13:30:31.021Z"}
+{"level":"info","message":"Socket 3Gt10VhZdDC77a4fAAAB joined room: xavpo3","timestamp":"2025-03-14T13:30:31.024Z"}
+{"level":"info","message":"Disconnected: 3Gt10VhZdDC77a4fAAAB (client namespace disconnect)","timestamp":"2025-03-14T13:30:38.062Z"}
+{"level":"info","message":"New connection: Fin3SSqcq6aO1EGUAAAD","timestamp":"2025-03-14T13:30:39.923Z"}
+{"level":"info","message":"Socket Fin3SSqcq6aO1EGUAAAD joined room: 1dmdng","timestamp":"2025-03-14T13:30:39.925Z"}
+{"level":"info","message":"Processing AI request for room: 1dmdng","timestamp":"2025-03-14T13:31:58.325Z"}
+{"level":"error","message":"AI processing failed: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent: [400 Bad Request] API key not valid. Please pass a valid API key. [{\"@type\":\"type.googleapis.com/google.rpc.ErrorInfo\",\"reason\":\"API_KEY_INVALID\",\"domain\":\"googleapis.com\",\"metadata\":{\"service\":\"generativelanguage.googleapis.com\"}},{\"@type\":\"type.googleapis.com/google.rpc.LocalizedMessage\",\"locale\":\"en-US\",\"message\":\"API key not valid. Please pass a valid API key.\"}]","timestamp":"2025-03-14T13:32:00.510Z"}
+{"level":"info","message":"Gemini AI initialized successfully","timestamp":"2025-03-14T13:38:49.468Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-14T13:38:49.485Z"}
+{"level":"info","message":"New connection: qyn_Ky_NpQ1bM_HyAAAC","timestamp":"2025-03-14T13:38:59.021Z"}
+{"level":"info","message":"Socket qyn_Ky_NpQ1bM_HyAAAC joined room: 1dmdng","timestamp":"2025-03-14T13:38:59.024Z"}
+{"level":"info","message":"Disconnected: qyn_Ky_NpQ1bM_HyAAAC (client namespace disconnect)","timestamp":"2025-03-14T14:02:24.011Z"}
+{"level":"info","message":"New connection: 1lUA7ntIqebbmK7tAAAF","timestamp":"2025-03-14T14:02:24.078Z"}
+{"level":"info","message":"Socket 1lUA7ntIqebbmK7tAAAF joined room: 1dmdng","timestamp":"2025-03-14T14:02:24.083Z"}
+{"level":"info","message":"Disconnected: 1lUA7ntIqebbmK7tAAAF (client namespace disconnect)","timestamp":"2025-03-14T14:06:17.990Z"}
+{"level":"info","message":"New connection: 4ihbEB81NUCKSpV6AAAH","timestamp":"2025-03-14T14:06:18.003Z"}
+{"level":"info","message":"Socket 4ihbEB81NUCKSpV6AAAH joined room: 1dmdng","timestamp":"2025-03-14T14:06:18.005Z"}
+{"level":"info","message":"Disconnected: 4ihbEB81NUCKSpV6AAAH (transport close)","timestamp":"2025-03-14T14:07:37.711Z"}
+{"level":"info","message":"Gemini AI initialized successfully","timestamp":"2025-03-14T14:43:04.252Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-14T14:43:04.263Z"}
+{"level":"info","message":"New connection: 2xYIdHJuuD4s2iKlAAAC","timestamp":"2025-03-14T14:43:18.384Z"}
+{"level":"info","message":"Socket 2xYIdHJuuD4s2iKlAAAC joined room: 1dmdng","timestamp":"2025-03-14T14:43:18.389Z"}
+{"level":"info","message":"Disconnected: 2xYIdHJuuD4s2iKlAAAC (client namespace disconnect)","timestamp":"2025-03-14T14:43:19.097Z"}
+{"level":"info","message":"New connection: CYCKiS2tumpkZgijAAAF","timestamp":"2025-03-14T14:43:19.114Z"}
+{"level":"info","message":"Socket CYCKiS2tumpkZgijAAAF joined room: 1dmdng","timestamp":"2025-03-14T14:43:19.115Z"}
+{"level":"info","message":"New connection: TRQiTpDOJ7hi4h6YAAAI","timestamp":"2025-03-14T14:44:45.213Z"}
+{"level":"info","message":"Socket TRQiTpDOJ7hi4h6YAAAI joined room: 1dmdng","timestamp":"2025-03-14T14:44:45.214Z"}
+{"level":"info","message":"Disconnected: CYCKiS2tumpkZgijAAAF (transport close)","timestamp":"2025-03-14T14:44:54.993Z"}
+{"level":"info","message":"New connection: Bi21a1ptj_i04TJ6AAAL","timestamp":"2025-03-14T14:44:55.399Z"}
+{"level":"info","message":"Socket Bi21a1ptj_i04TJ6AAAL joined room: 1dmdng","timestamp":"2025-03-14T14:44:55.403Z"}
+{"level":"info","message":"Disconnected: Bi21a1ptj_i04TJ6AAAL (transport close)","timestamp":"2025-03-14T14:44:55.817Z"}
+{"level":"info","message":"New connection: JwJuvjgZhmn-YtKOAAAO","timestamp":"2025-03-14T14:44:55.939Z"}
+{"level":"info","message":"Socket JwJuvjgZhmn-YtKOAAAO joined room: 1dmdng","timestamp":"2025-03-14T14:44:55.950Z"}
+{"level":"info","message":"Disconnected: JwJuvjgZhmn-YtKOAAAO (transport close)","timestamp":"2025-03-14T14:45:02.102Z"}
+{"level":"info","message":"New connection: U1X_umXrvHMlzt3YAAAR","timestamp":"2025-03-14T14:45:02.184Z"}
+{"level":"info","message":"Socket U1X_umXrvHMlzt3YAAAR joined room: 1dmdng","timestamp":"2025-03-14T14:45:02.185Z"}
+{"level":"info","message":"Disconnected: U1X_umXrvHMlzt3YAAAR (transport close)","timestamp":"2025-03-14T14:45:07.133Z"}
+{"level":"info","message":"New connection: GpsXbfVHWgWrlEkHAAAU","timestamp":"2025-03-14T14:45:07.205Z"}
+{"level":"info","message":"Socket GpsXbfVHWgWrlEkHAAAU joined room: 1dmdng","timestamp":"2025-03-14T14:45:07.206Z"}
+{"level":"info","message":"Disconnected: GpsXbfVHWgWrlEkHAAAU (transport close)","timestamp":"2025-03-14T14:45:11.189Z"}
+{"level":"info","message":"New connection: p4cH1wnjzRUVK6ZmAAAX","timestamp":"2025-03-14T14:45:11.257Z"}
+{"level":"info","message":"Socket p4cH1wnjzRUVK6ZmAAAX joined room: 1dmdng","timestamp":"2025-03-14T14:45:11.277Z"}
+{"level":"info","message":"Disconnected: p4cH1wnjzRUVK6ZmAAAX (transport close)","timestamp":"2025-03-14T14:45:16.888Z"}
+{"level":"info","message":"New connection: b-d8HznYYfsCqRFiAAAa","timestamp":"2025-03-14T14:45:16.959Z"}
+{"level":"info","message":"Socket b-d8HznYYfsCqRFiAAAa joined room: 1dmdng","timestamp":"2025-03-14T14:45:16.960Z"}
+{"level":"info","message":"Disconnected: b-d8HznYYfsCqRFiAAAa (transport close)","timestamp":"2025-03-14T14:45:20.561Z"}
+{"level":"info","message":"New connection: x25fQWsSlrl9v54LAAAd","timestamp":"2025-03-14T14:45:20.637Z"}
+{"level":"info","message":"Socket x25fQWsSlrl9v54LAAAd joined room: 1dmdng","timestamp":"2025-03-14T14:45:20.638Z"}
+{"level":"info","message":"Disconnected: x25fQWsSlrl9v54LAAAd (transport close)","timestamp":"2025-03-14T14:45:25.528Z"}
+{"level":"info","message":"New connection: no_4d5IpLfgLAXBYAAAg","timestamp":"2025-03-14T14:45:25.603Z"}
+{"level":"info","message":"Socket no_4d5IpLfgLAXBYAAAg joined room: 1dmdng","timestamp":"2025-03-14T14:45:25.605Z"}
+{"level":"info","message":"Disconnected: no_4d5IpLfgLAXBYAAAg (transport close)","timestamp":"2025-03-14T14:45:29.373Z"}
+{"level":"info","message":"New connection: nagc0HzmPhZtUTlBAAAj","timestamp":"2025-03-14T14:45:29.454Z"}
+{"level":"info","message":"Socket nagc0HzmPhZtUTlBAAAj joined room: 1dmdng","timestamp":"2025-03-14T14:45:29.455Z"}
+{"level":"info","message":"Disconnected: nagc0HzmPhZtUTlBAAAj (transport close)","timestamp":"2025-03-14T14:45:31.782Z"}
+{"level":"info","message":"New connection: 7PCUHl2V2_ZdtPEbAAAm","timestamp":"2025-03-14T14:45:31.856Z"}
+{"level":"info","message":"Socket 7PCUHl2V2_ZdtPEbAAAm joined room: 1dmdng","timestamp":"2025-03-14T14:45:31.857Z"}
+{"level":"info","message":"Disconnected: 7PCUHl2V2_ZdtPEbAAAm (transport close)","timestamp":"2025-03-14T14:45:38.415Z"}
+{"level":"info","message":"New connection: Bu4D25wZWfPOeuBSAAAp","timestamp":"2025-03-14T14:45:38.479Z"}
+{"level":"info","message":"Socket Bu4D25wZWfPOeuBSAAAp joined room: 1dmdng","timestamp":"2025-03-14T14:45:38.489Z"}
+{"level":"info","message":"Disconnected: Bu4D25wZWfPOeuBSAAAp (transport close)","timestamp":"2025-03-14T14:45:44.193Z"}
+{"level":"info","message":"New connection: MFNN_FmgJM11S6RCAAAs","timestamp":"2025-03-14T14:45:44.269Z"}
+{"level":"info","message":"Socket MFNN_FmgJM11S6RCAAAs joined room: 1dmdng","timestamp":"2025-03-14T14:45:44.269Z"}
+{"level":"info","message":"Disconnected: MFNN_FmgJM11S6RCAAAs (client namespace disconnect)","timestamp":"2025-03-14T14:45:56.431Z"}
+{"level":"info","message":"New connection: CCccg01YOqFUqZsnAAAu","timestamp":"2025-03-14T14:45:58.700Z"}
+{"level":"info","message":"Socket CCccg01YOqFUqZsnAAAu joined room: 8282l6","timestamp":"2025-03-14T14:45:58.700Z"}
+{"level":"info","message":"Disconnected: CCccg01YOqFUqZsnAAAu (transport close)","timestamp":"2025-03-14T14:46:04.517Z"}
+{"level":"info","message":"New connection: d14zINw3hDqYo064AAAx","timestamp":"2025-03-14T14:46:04.591Z"}
+{"level":"info","message":"Socket d14zINw3hDqYo064AAAx joined room: 8282l6","timestamp":"2025-03-14T14:46:04.591Z"}
+{"level":"info","message":"Disconnected: d14zINw3hDqYo064AAAx (transport close)","timestamp":"2025-03-14T14:46:09.873Z"}
+{"level":"info","message":"New connection: ljgtQ1-xuX8LnJ2pAAA0","timestamp":"2025-03-14T14:46:09.946Z"}
+{"level":"info","message":"Socket ljgtQ1-xuX8LnJ2pAAA0 joined room: 8282l6","timestamp":"2025-03-14T14:46:09.947Z"}
+{"level":"info","message":"Gemini AI initialized successfully","timestamp":"2025-03-14T14:47:03.771Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-14T14:47:03.783Z"}
+{"level":"info","message":"New connection: Q-kgwm1Cm99n9p6zAAAB","timestamp":"2025-03-14T14:47:03.985Z"}
+{"level":"info","message":"Socket Q-kgwm1Cm99n9p6zAAAB joined room: 8282l6","timestamp":"2025-03-14T14:47:03.987Z"}
+{"level":"info","message":"Disconnected: Q-kgwm1Cm99n9p6zAAAB (transport close)","timestamp":"2025-03-14T14:47:20.124Z"}
+{"level":"info","message":"New connection: 5qjZ7mc0YNRL6eizAAAE","timestamp":"2025-03-14T14:47:20.198Z"}
+{"level":"info","message":"Socket 5qjZ7mc0YNRL6eizAAAE joined room: 8282l6","timestamp":"2025-03-14T14:47:20.199Z"}
+{"level":"info","message":"Disconnected: 5qjZ7mc0YNRL6eizAAAE (transport close)","timestamp":"2025-03-14T14:47:32.967Z"}
+{"level":"info","message":"New connection: hT6_YBMVCTR__HPmAAAH","timestamp":"2025-03-14T14:47:33.044Z"}
+{"level":"info","message":"Socket hT6_YBMVCTR__HPmAAAH joined room: 8282l6","timestamp":"2025-03-14T14:47:33.046Z"}
+{"level":"info","message":"New connection: PP3ohZswZWvFJLDRAAAK","timestamp":"2025-03-14T14:48:26.400Z"}
+{"level":"info","message":"Socket PP3ohZswZWvFJLDRAAAK joined room: 1dmdng","timestamp":"2025-03-14T14:48:26.401Z"}
+{"level":"info","message":"Disconnected: hT6_YBMVCTR__HPmAAAH (transport close)","timestamp":"2025-03-14T15:04:37.586Z"}
+{"level":"info","message":"New connection: bJ2QOhsmKJBj6k-hAAAN","timestamp":"2025-03-14T15:05:23.240Z"}
+{"level":"info","message":"Socket bJ2QOhsmKJBj6k-hAAAN joined room: 8282l6","timestamp":"2025-03-14T15:05:23.242Z"}
+{"level":"info","message":"Gemini AI initialized successfully","timestamp":"2025-03-14T15:45:17.527Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-14T15:45:17.538Z"}
+{"level":"info","message":"New connection: tXzXRKej55q1g6pnAAAC","timestamp":"2025-03-14T15:45:46.191Z"}
+{"level":"info","message":"New connection: bxyusReJ8MNxzk5EAAAF","timestamp":"2025-03-14T15:45:50.147Z"}
+{"level":"info","message":"New connection: _Xs1NfZTD_8QKzUPAAAI","timestamp":"2025-03-14T15:46:05.811Z"}
+{"level":"info","message":"New connection: wTE3GBeVvKTR5y-4AAAL","timestamp":"2025-03-14T15:46:11.310Z"}
+{"level":"info","message":"New connection: e7iKinwAgLISKYQcAAAO","timestamp":"2025-03-14T15:46:12.380Z"}
+{"level":"info","message":"New connection: 23wdLbCbTg1mAKBkAAAR","timestamp":"2025-03-14T15:46:13.251Z"}
+{"level":"info","message":"New connection: rteSwxbD9wUWi7-1AAAU","timestamp":"2025-03-14T15:46:13.505Z"}
+{"level":"info","message":"New connection: sbscAn32mG98UkrjAAAX","timestamp":"2025-03-14T15:46:13.700Z"}
+{"level":"info","message":"New connection: vnCHivX95ve3Bn1kAAAa","timestamp":"2025-03-14T15:46:13.900Z"}
+{"level":"info","message":"New connection: L06wxBGY3WYOrCUEAAAd","timestamp":"2025-03-14T15:46:15.851Z"}
+{"level":"info","message":"New connection: PioQ-z0DNjdlJx2cAAAg","timestamp":"2025-03-14T15:46:24.714Z"}
+{"level":"info","message":"New connection: 6SyCIg8NiTLezSLqAAAj","timestamp":"2025-03-14T15:46:28.581Z"}
+{"level":"info","message":"New connection: W4OhaBAtkw2cM7-VAAAm","timestamp":"2025-03-14T15:46:30.832Z"}
+{"level":"info","message":"New connection: cXl7_APrALU4WOOMAAAp","timestamp":"2025-03-14T15:46:43.116Z"}
+{"level":"info","message":"New connection: grjiqr8NVpMcDfKNAAAs","timestamp":"2025-03-14T15:46:51.345Z"}
+{"level":"info","message":"New connection: hQzUerc0u9nq3dHUAAAv","timestamp":"2025-03-14T15:46:57.494Z"}
+{"level":"info","message":"New connection: bnPz6JXp4LeNKcrvAAAy","timestamp":"2025-03-14T15:46:58.614Z"}
+{"level":"info","message":"New connection: wJAvBl1iXF3E35h_AAA1","timestamp":"2025-03-14T15:46:59.477Z"}
+{"level":"info","message":"New connection: A7yWDohPM7Org1FAAAA4","timestamp":"2025-03-14T15:47:00.334Z"}
+{"level":"info","message":"New connection: sWXhDpmn9NulL9jzAAA7","timestamp":"2025-03-14T15:47:01.109Z"}
+{"level":"info","message":"New connection: g1fRZ5BWqpa5jfwsAAA-","timestamp":"2025-03-14T15:47:02.279Z"}
+{"level":"info","message":"New connection: ty5nBWnR4bXYtvKiAABB","timestamp":"2025-03-14T15:47:03.109Z"}
+{"level":"info","message":"New connection: y4OtDqmpVUlJI4j2AABE","timestamp":"2025-03-14T15:47:13.328Z"}
+{"level":"info","message":"Gemini AI initialized successfully","timestamp":"2025-03-14T16:08:52.778Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-14T16:08:52.791Z"}
+{"level":"info","message":"New connection: _PE0Uuej8_XVXI8AAAAC","timestamp":"2025-03-14T16:08:55.785Z"}
+{"level":"info","message":"New connection: IyI1kEnFXUCzNT1dAAAF","timestamp":"2025-03-14T16:08:56.298Z"}
+{"level":"info","message":"New connection: LLGQVwfWTKWkzugdAAAH","timestamp":"2025-03-14T16:08:56.322Z"}
+{"level":"info","message":"New connection: KXyq_Wk2lBt9ze_XAAAK","timestamp":"2025-03-14T16:08:58.858Z"}
+{"level":"info","message":"New connection: KFyGgBJk1uVTY4iUAAAN","timestamp":"2025-03-14T16:09:23.872Z"}
+{"level":"info","message":"New connection: Fl9G6x7E4aedGmf6AAAQ","timestamp":"2025-03-14T16:09:29.027Z"}
+{"level":"info","message":"New connection: HNpNArfNgZajU0hUAAAT","timestamp":"2025-03-14T16:09:30.385Z"}
+{"level":"info","message":"New connection: mReLqw4wmhQhUuztAAAW","timestamp":"2025-03-14T16:09:31.315Z"}
+{"level":"info","message":"New connection: 7vux26TSa5H3mCJQAAAZ","timestamp":"2025-03-14T16:09:33.838Z"}
+{"level":"info","message":"New connection: qdCerybweyRlqjnKAAAc","timestamp":"2025-03-14T16:09:34.227Z"}
+{"level":"info","message":"New connection: TVoLSpibb80Ixw-6AAAf","timestamp":"2025-03-14T16:09:34.766Z"}
+{"level":"info","message":"New connection: G60WbpmZAtFXx6ltAAAi","timestamp":"2025-03-14T16:09:34.982Z"}
+{"level":"info","message":"New connection: Otk_fn4ZTn3-U0kPAAAl","timestamp":"2025-03-14T16:09:35.236Z"}
+{"level":"info","message":"New connection: NcYcItF301wDyfcoAAAo","timestamp":"2025-03-14T16:09:35.460Z"}
+{"level":"info","message":"New connection: mARJbolwp2Ks_DLfAAAr","timestamp":"2025-03-14T16:09:35.713Z"}
+{"level":"info","message":"New connection: hGOJLh-MYu73jBJYAAAu","timestamp":"2025-03-14T16:09:35.944Z"}
+{"level":"info","message":"New connection: VjOvJqfFI2tx6JYjAAAx","timestamp":"2025-03-14T16:09:36.461Z"}
+{"level":"info","message":"New connection: AaunxaIVy48aE7_JAAA0","timestamp":"2025-03-14T16:10:03.409Z"}
+{"level":"info","message":"New connection: YU23DF7sS_N9nurWAAA3","timestamp":"2025-03-14T16:10:04.243Z"}
+{"level":"info","message":"New connection: YLGL6gs3_ynk-Ll_AAA6","timestamp":"2025-03-14T16:10:04.418Z"}
+{"level":"info","message":"New connection: 4sVzHjbKSY0vI4UmAAA9","timestamp":"2025-03-14T16:10:04.670Z"}
+{"level":"info","message":"New connection: xKvr1CjHV2i5nfoqAABA","timestamp":"2025-03-14T16:10:04.975Z"}
+{"level":"info","message":"New connection: 5COQuIfsu8AkZsJIAABD","timestamp":"2025-03-14T16:10:05.199Z"}
+{"level":"info","message":"New connection: O-P1C1YO6p_vS1eyAABG","timestamp":"2025-03-14T16:10:05.367Z"}
+{"level":"info","message":"New connection: q3dk1gwJ0CBeggtmAABJ","timestamp":"2025-03-14T16:10:05.608Z"}
+{"level":"info","message":"New connection: O21edQo7kS-y7GqjAABM","timestamp":"2025-03-14T16:10:05.770Z"}
+{"level":"info","message":"New connection: szD3m6QxIIfXBznzAABP","timestamp":"2025-03-14T16:10:05.991Z"}
+{"level":"info","message":"New connection: GfIlysjalFFbVYoXAABS","timestamp":"2025-03-14T16:10:06.148Z"}
+{"level":"info","message":"New connection: ob5SuZDud4THTI3pAABV","timestamp":"2025-03-14T16:10:06.353Z"}
+{"level":"info","message":"New connection: Zzov1CB6AWBAXT1kAABY","timestamp":"2025-03-14T16:10:06.548Z"}
+{"level":"info","message":"New connection: ER7qjqjvZBTDwn5HAABb","timestamp":"2025-03-14T16:10:06.704Z"}
+{"level":"info","message":"New connection: yluuESsPtE-ddrFBAABe","timestamp":"2025-03-14T16:10:06.915Z"}
+{"level":"info","message":"New connection: CapIro1OhrISogcHAABh","timestamp":"2025-03-14T16:10:07.069Z"}
+{"level":"info","message":"New connection: AYQpVh3yfustHS66AABk","timestamp":"2025-03-14T16:10:07.265Z"}
+{"level":"info","message":"New connection: OcA484kEQFubSo6TAABn","timestamp":"2025-03-14T16:10:07.461Z"}
+{"level":"info","message":"New connection: GrmZdEsHBYXJOm0VAABq","timestamp":"2025-03-14T16:10:07.705Z"}
+{"level":"info","message":"New connection: R4WkC8flsANR_osfAABt","timestamp":"2025-03-14T16:10:08.296Z"}
+{"level":"info","message":"New connection: 1adHW-NHklHCGcZBAABw","timestamp":"2025-03-14T16:10:08.609Z"}
+{"level":"info","message":"New connection: xiQrNs9JxYRozuOuAABz","timestamp":"2025-03-14T16:10:18.468Z"}
+{"level":"info","message":"New connection: fKbWn7KSO2WA2or-AAB1","timestamp":"2025-03-14T16:10:48.131Z"}
+{"level":"info","message":"New connection: cPkA2htJFxypyAlEAAB4","timestamp":"2025-03-14T16:10:56.922Z"}
+{"level":"info","message":"New connection: B2wctHrNw2d5mw7ZAAB7","timestamp":"2025-03-14T16:11:00.998Z"}
+{"level":"info","message":"New connection: smobo_SIGtj_CE-4AAB-","timestamp":"2025-03-14T16:11:01.721Z"}
+{"level":"info","message":"New connection: gBsgQNDYJOUp9u5KAACB","timestamp":"2025-03-14T16:11:08.512Z"}
+{"level":"info","message":"New connection: VVY9URv10oLV8Zh8AACE","timestamp":"2025-03-14T16:11:08.999Z"}
+{"level":"info","message":"New connection: dP7idCjbupN_9wrCAACH","timestamp":"2025-03-14T16:11:09.220Z"}
+{"level":"info","message":"New connection: facROWZmJXDw3BOQAACK","timestamp":"2025-03-14T16:11:09.396Z"}
+{"level":"info","message":"New connection: -Cd5fNMil-gnTgJLAACN","timestamp":"2025-03-14T16:11:09.652Z"}
+{"level":"info","message":"New connection: LLW5Yu7ISPtq3REFAACQ","timestamp":"2025-03-14T16:11:09.854Z"}
+{"level":"info","message":"New connection: HiYvJ20Rr-vAlESSAACT","timestamp":"2025-03-14T16:11:10.003Z"}
+{"level":"info","message":"New connection: CHk1BOtT9W1bPtx2AACW","timestamp":"2025-03-14T16:11:10.207Z"}
+{"level":"info","message":"New connection: xsOsoOaA2SXj63-gAACZ","timestamp":"2025-03-14T16:11:10.380Z"}
+{"level":"info","message":"New connection: QncTEM2abC6NTl78AACc","timestamp":"2025-03-14T16:11:10.653Z"}
+{"level":"info","message":"New connection: VcJSMTgGCHjmCLbhAACf","timestamp":"2025-03-14T16:11:10.896Z"}
+{"level":"info","message":"New connection: vIK7ldA3FwswNKdiAACi","timestamp":"2025-03-14T16:11:11.125Z"}
+{"level":"info","message":"New connection: O_C1IKCMNcLOW992AACl","timestamp":"2025-03-14T16:11:11.268Z"}
+{"level":"info","message":"New connection: 8bELsunjqwy-fUzcAACo","timestamp":"2025-03-14T16:11:11.475Z"}
+{"level":"info","message":"New connection: cyODfcnJRwYVxikjAACr","timestamp":"2025-03-14T16:11:11.697Z"}
+{"level":"info","message":"New connection: u-vqI0_klwmNj3xOAACu","timestamp":"2025-03-14T16:11:11.919Z"}
+{"level":"info","message":"New connection: k1RyRkIXln-W2gNHAACx","timestamp":"2025-03-14T16:11:12.241Z"}
+{"level":"info","message":"New connection: PW-YBESvy4IK3poDAAC0","timestamp":"2025-03-14T16:11:12.515Z"}
+{"level":"info","message":"New connection: PiaSM4pgIZNd7kEzAAC3","timestamp":"2025-03-14T16:11:12.701Z"}
+{"level":"info","message":"New connection: 0ZKCr_hKYkArwjV-AAC6","timestamp":"2025-03-14T16:11:12.893Z"}
+{"level":"info","message":"New connection: TF9B96mV-Bf4LD9LAAC9","timestamp":"2025-03-14T16:11:13.362Z"}
+{"level":"info","message":"New connection: X7qeSo-qlaQMgQ7pAADA","timestamp":"2025-03-14T16:11:13.562Z"}
+{"level":"info","message":"New connection: CIkKhVly10dxN22MAADD","timestamp":"2025-03-14T16:11:13.827Z"}
+{"level":"info","message":"New connection: 76TVk41g0a0lUIojAADG","timestamp":"2025-03-14T16:11:14.074Z"}
+{"level":"info","message":"New connection: YKvYO2l0GWHGRhwWAADJ","timestamp":"2025-03-14T16:11:24.192Z"}
+{"level":"info","message":"New connection: -Tgk9Yx8vN2-gyx0AADM","timestamp":"2025-03-14T16:11:31.812Z"}
+{"level":"info","message":"New connection: L0rAqbCVhkSYj8tNAADP","timestamp":"2025-03-14T16:11:32.235Z"}
+{"level":"info","message":"New connection: Y4wARoMYVcsZQDnwAADS","timestamp":"2025-03-14T16:13:02.512Z"}
+{"level":"info","message":"New connection: Hl_QDLKsYkFRhbxdAADV","timestamp":"2025-03-14T16:13:09.848Z"}
+{"level":"info","message":"New connection: QdglzUQoWCAc6OzeAADY","timestamp":"2025-03-14T16:13:10.594Z"}
+{"level":"info","message":"New connection: cTI3RuDQI_Lq6cZWAADb","timestamp":"2025-03-14T16:13:15.153Z"}
+{"level":"info","message":"New connection: 5ofDIyf0-yCB1HwbAADe","timestamp":"2025-03-14T16:13:47.773Z"}
+{"level":"info","message":"New connection: hs9HKRFLxv4e9HHPAADh","timestamp":"2025-03-14T16:25:26.008Z"}
+{"level":"info","message":"New connection: rN6DZNynDTbdNmFPAADi","timestamp":"2025-03-14T16:25:26.020Z"}
+{"level":"info","message":"New connection: 7bdMLIW0JPOlDxFoAADl","timestamp":"2025-03-14T16:25:37.994Z"}
+{"level":"info","message":"New connection: qU7musVgac2UpWHvAADm","timestamp":"2025-03-14T16:25:38.001Z"}
+{"level":"info","message":"New connection: e8im_W77lcRq62hpAADo","timestamp":"2025-03-14T16:28:22.981Z"}
+{"level":"info","message":"New connection: YLCnZDp2nthyGNBTAADq","timestamp":"2025-03-14T16:28:22.989Z"}
+{"level":"info","message":"Gemini AI initialized successfully","timestamp":"2025-03-14T16:28:34.308Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-14T16:28:34.321Z"}
+{"level":"info","message":"New connection: zGnL6KAKBxuXVZNKAAAB","timestamp":"2025-03-14T16:28:36.000Z"}
+{"level":"info","message":"New connection: wjYI2Rr4rERxhRbXAAAD","timestamp":"2025-03-14T16:28:36.984Z"}
+{"level":"info","message":"Gemini AI initialized successfully","timestamp":"2025-03-14T16:32:50.939Z"}
+{"level":"info","message":"Server running in development mode on port 5000","timestamp":"2025-03-14T16:32:50.953Z"}
+{"level":"info","message":"New connection: xQhMP3ML5PyLn1mMAAAC","timestamp":"2025-03-14T16:33:31.959Z"}
+{"level":"info","message":"New connection: ms5m0m_cZoCNftwqAAAF","timestamp":"2025-03-14T16:33:39.477Z"}
+{"level":"info","message":"New connection: gwKd4qdOkRprRchwAAAI","timestamp":"2025-03-14T16:33:51.310Z"}
+{"level":"info","message":"New connection: jWyafVLtNupNXHv8AAAL","timestamp":"2025-03-14T16:33:52.167Z"}
+{"level":"info","message":"New connection: 43I_a-rO_vvyfrSLAAAO","timestamp":"2025-03-14T16:33:52.810Z"}
+{"level":"info","message":"New connection: nMxj18F_TJPNXMdTAAAR","timestamp":"2025-03-14T16:33:52.963Z"}
+{"level":"info","message":"New connection: _BMS7CI_M6iP_scKAAAU","timestamp":"2025-03-14T16:33:53.146Z"}
+{"level":"info","message":"New connection: Do-gjzd2b6nXJ4NbAAAX","timestamp":"2025-03-14T16:33:53.321Z"}
+{"level":"info","message":"New connection: mHq7UPkHvrucLDLPAAAa","timestamp":"2025-03-14T16:33:53.489Z"}
+{"level":"info","message":"New connection: OwesPOr0vqXuFEtGAAAd","timestamp":"2025-03-14T16:33:53.676Z"}
+{"level":"info","message":"New connection: 99PY59wlvRFUgpjyAAAg","timestamp":"2025-03-14T16:33:53.839Z"}
+{"level":"info","message":"New connection: 8DEkpDSl6LVeppu3AAAj","timestamp":"2025-03-14T16:33:54.041Z"}
+{"level":"info","message":"New connection: mHPrc5ox1QUKWO7RAAAm","timestamp":"2025-03-14T16:33:54.187Z"}
+{"level":"info","message":"New connection: gvG4piTuQrCxcHeoAAAp","timestamp":"2025-03-14T16:33:54.364Z"}
+{"level":"info","message":"New connection: iErTGW6jblkD60obAAAs","timestamp":"2025-03-14T16:33:54.514Z"}
+{"level":"info","message":"New connection: jBUOsctWaBDUL3BdAAAv","timestamp":"2025-03-14T16:33:54.738Z"}
+{"level":"info","message":"New connection: ZKW4NVCCemV0tgIvAAAy","timestamp":"2025-03-14T16:33:55.845Z"}
+{"level":"info","message":"New connection: Owxa8Fpnkh-ek6NAAAA1","timestamp":"2025-03-14T16:34:43.916Z"}
+{"level":"info","message":"New connection: OQejr9rbJ5vb80PyAAA4","timestamp":"2025-03-14T16:34:54.689Z"}
+{"level":"info","message":"New connection: a69a10oJ0vIEJgR8AAA7","timestamp":"2025-03-14T16:35:01.457Z"}
+{"level":"info","message":"New connection: Ob_z2tVLyrebMJG2AAA-","timestamp":"2025-03-14T16:35:10.891Z"}
+{"level":"info","message":"New connection: A11ZugTNCxzcbGttAABB","timestamp":"2025-03-14T16:35:16.487Z"}
+{"level":"info","message":"New connection: cAly3xFZDDrDg9ilAABE","timestamp":"2025-03-14T16:35:17.982Z"}
+{"level":"info","message":"New connection: E-qp3xhC-LGKK0CyAABH","timestamp":"2025-03-14T16:35:19.274Z"}
+{"level":"info","message":"New connection: i4eNCDuM3RKnhinJAABK","timestamp":"2025-03-14T16:35:20.228Z"}
+{"level":"info","message":"New connection: J-G6oyLbRppTj7oxAABN","timestamp":"2025-03-14T16:35:21.643Z"}
+{"level":"info","message":"New connection: j2Eg88n1QyR8knzjAABQ","timestamp":"2025-03-14T16:35:32.920Z"}
+{"level":"info","message":"New connection: PMjih8_zEbQt6cTuAABT","timestamp":"2025-03-14T16:35:34.087Z"}
+{"level":"info","message":"New connection: AgVxVBYK6z0OQ-IcAABW","timestamp":"2025-03-14T17:24:18.823Z"}
+{"level":"info","message":"New connection: MJoXo1uqj0lv6AeRAABZ","timestamp":"2025-03-14T17:24:22.306Z"}
