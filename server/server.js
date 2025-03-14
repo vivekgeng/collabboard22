@@ -74,7 +74,6 @@ const validateRoomId = (roomId) => {
   return typeof roomId === 'string' && roomId.length > 0;
 };
 
-// Add this validation function
 const validateDrawData = (data) => {
   return data && 
          typeof data.x === 'number' &&
@@ -192,12 +191,17 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Updated draw handler with validation
   socket.on('draw', (data) => {
     if (!validateDrawData(data)) {
       logger.warn(`Invalid draw data from ${socket.id}`);
       return;
     }
+    
+    if (typeof data.page !== 'number' || data.page < 0) {
+      logger.warn(`Invalid page number: ${data.page}`);
+      return;
+    }
+
     try {
       io.to(data.roomId).emit('draw', {
         ...data,
@@ -206,26 +210,6 @@ io.on('connection', (socket) => {
     } catch (error) {
       logger.error(`Draw event error: ${error.message}`);
     }
-    
-  if (typeof data.page !== 'number' || data.page < 0) {
-    logger.warn(`Invalid page number: ${data.page}`);
-    return;
-  }
-
-  try {
-    io.to(data.roomId).emit('draw', {
-      ...data,
-      isErasing: data.isErasing || false
-    });
-  } catch (error) {
-    logger.error(`Draw event error: ${error.message}`);
-  }
-});
-  
-    io.to(data.roomId).emit('draw', {
-      ...data,
-      isErasing: data.isErasing || false
-    });
   });
 
   socket.on('chatMessage', (msgData) => {
@@ -262,7 +246,7 @@ io.on('connection', (socket) => {
       }
     });
   });
-
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -276,7 +260,7 @@ server.listen(PORT, () => {
   logger.info(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
 
-// Graceful shutdown er
+// Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received: closing server');
   server.close(() => {
