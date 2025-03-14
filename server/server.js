@@ -206,7 +206,7 @@ io.on('connection', (socket) => {
     } catch (error) {
       logger.error(`Draw event error: ${error.message}`);
     }
-
+    
     if (typeof data.page !== 'number' || data.page < 0) {
       logger.warn(`Invalid page number: ${data.page}`);
       return;
@@ -266,7 +266,7 @@ server.listen(PORT, () => {
   logger.info(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
 
-// Graceful shutdownsdjfdfjd
+// Graceful shutdown er
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received: closing server');
   server.close(() => {
