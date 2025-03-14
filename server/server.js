@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -75,13 +74,20 @@ const validateRoomId = (roomId) => {
   return typeof roomId === 'string' && roomId.length > 0;
 };
 
+// Add this validation function
+const validateDrawData = (data) => {
+  return data && 
+         typeof data.x === 'number' &&
+         typeof data.y === 'number' &&
+         data.x >= 0 && data.x <= 640 &&
+         data.y >= 0 && data.y <= 480 &&
+         validateRoomId(data.roomId);
+};
+
 // Socket.IO handlers
 io.on('connection', (socket) => {
   logger.info(`New connection: ${socket.id}`);
 
-  // ---------------------------
-  // ROOM JOINING HANDLER (UNCHANGED)
-  // ---------------------------
   socket.on('joinRoom', (roomId) => {
     try {
       if (!validateRoomId(roomId)) {
@@ -103,9 +109,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ---------------------------
-  // UPDATED AI PROCESSING HANDLER (CRITICAL FIX HERE)
-  // ---------------------------
   socket.on('processWithAI', async (data) => {
     if (!data?.image || !validateRoomId(data.roomId)) {
       logger.error('Invalid AI request format');
@@ -122,15 +125,13 @@ io.on('connection', (socket) => {
     }, 15000);
 
     try {
-      // Validate image data
       const imageParts = data.image.split(',');
       if (imageParts.length !== 2 || !imageParts[1]) {
         throw new Error('Invalid image data format');
       }
 
-      // CORRECTED MODEL NAME (gemini-1.5-flash)
       const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-pro",
         generationConfig: {
           maxOutputTokens: 1000,
           temperature: 0.5
@@ -165,10 +166,10 @@ io.on('connection', (socket) => {
       io.to(data.roomId).emit('aiResponse', {
         roomId: data.roomId,
         response: text.replace(/\n/g, '<br>')
-        .replace(/\*\*/g, '')    // Remove bold markers
-        .replace(/\*/g, '')      // Remove italics markers
-        .replace(/\\boxed{(.*?)}/g, '$1') // Clean LaTeX boxes
-        .replace(/\$/g, '')       // Remove dollar signs
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+        .replace(/\\boxed{(.*?)}/g, '$1')
+        .replace(/\$/g, '')
       });
 
     } catch (error) {
@@ -191,28 +192,22 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ---------------------------
-  // EXISTING HANDLERS (UNCHANGED)
-  // ---------------------------
+  // Updated draw handler with validation
   socket.on('draw', (data) => {
-    if (!data || !validateRoomId(data.roomId)) return;
+    if (!validateDrawData(data)) {
+      logger.warn(`Invalid draw data from ${socket.id}`);
+      return;
+    }
     try {
-      io.to(data.roomId).emit('draw', data);
+      io.to(data.roomId).emit('draw', {
+        ...data,
+        isErasing: data.isErasing || false
+      });
     } catch (error) {
       logger.error(`Draw event error: ${error.message}`);
     }
   });
 
-  // server.js - In the draw handler
-socket.on('draw', (data) => {
-  if (!validateDrawData(data)) return;
-  // Add isErasing to the broadcast data
-  io.to(data.roomId).emit('draw', {
-    ...data,
-    isErasing: data.isErasing || false
-  });
-});
-  
   socket.on('chatMessage', (msgData) => {
     if (!msgData?.message || !validateRoomId(msgData.roomId)) return;
     try {
