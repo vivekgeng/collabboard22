@@ -1,3 +1,4 @@
+
 // Whiteboard.js
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import DOMPurify from 'dompurify'; // Install with: npm install dompurify

@@ -7,8 +7,6 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const winston = require('winston');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const userSockets = new Map(); // Track socket.id -> userId
-
 
 // Configure logging
 const logger = winston.createLogger({
@@ -76,6 +74,7 @@ const validateRoomId = (roomId) => {
   return typeof roomId === 'string' && roomId.length > 0;
 };
 
+// Add this validation function
 const validateDrawData = (data) => {
   return data && 
          typeof data.x === 'number' &&
@@ -89,66 +88,26 @@ const validateDrawData = (data) => {
 io.on('connection', (socket) => {
   logger.info(`New connection: ${socket.id}`);
 
-  socket.on('joinRoom', ({ roomId, userId }) => {
+  socket.on('joinRoom', (roomId) => {
     try {
-      if (!validateRoomId(roomId)) throw new Error('Invalid room ID');
-  
-      // Store user-socket relationship
-      userSockets.set(socket.id, userId);
-  
-      let room = rooms.get(roomId) || { users: new Set(), count: 0 };
-      
-      if (!room.users.has(userId)) {
-        room.users.add(userId);
-        room.count = room.users.size;
-        rooms.set(roomId, room);
+      if (!validateRoomId(roomId)) {
+        throw new Error('Invalid room ID format');
       }
-  
-      // Send current count to everyone
-      io.to(roomId).emit('user-joined', {
-        participants: room.count,
-        username: `User ${userId.slice(-4)}`
-      });
-      socket.emit('force-update-count', room.count);
+
       socket.join(roomId);
+      rooms.set(roomId, (rooms.get(roomId) || 0) + 1);
+      
+      logger.info(`Socket ${socket.id} joined room: ${roomId}`);
+      socket.emit('roomStatus', { 
+        participants: rooms.get(roomId),
+        roomId 
+      });
+
     } catch (error) {
-      logger.error(`Join error: ${error.message}`);
+      logger.error(`Join room error: ${error.message}`);
+      socket.emit('error', { message: error.message });
     }
   });
-
-// Modify the disconnect handler
-// Add these in the disconnect handler
-
-
-socket.on('disconnect', () => {
-
-  // Add these in the disconnect handle
-
-  const userId = userSockets.get(socket.id);
-  userSockets.delete(socket.id);
-
-  Array.from(socket.rooms).forEach(roomId => {
-    if (roomId !== socket.id) {
-      const room = rooms.get(roomId);
-      if (room && room.users.has(userId)) {
-        // Remove user and update count FIRST
-        room.users.delete(userId);
-        const newCount = room.users.size;
-        room.count = newCount;
-                // Add these in the disconnect handler
-          console.log('User disconnected:', userId);
-          console.log('Updated room state:', rooms.get(roomId));
-          // Then emit to ALL clients in the room
-        io.to(roomId).emit('user-left', {
-          participants: newCount,
-          username: `User ${userId?.slice(-4) || 'Unknown'}`
-        });
-
-        if (newCount <= 0) rooms.delete(roomId);
-      }
-    }
-  });
-});
 
   socket.on('processWithAI', async (data) => {
     if (!data?.image || !validateRoomId(data.roomId)) {
@@ -166,11 +125,11 @@ socket.on('disconnect', () => {
     }, 15000);
 
     try {
-      // Validate image data
-      const base64Data = data.image.replace(/^data:image\/\w+;base64,/, '');
-      const imageBuffer = Buffer.from(base64Data, 'base64');
+      const imageParts = data.image.split(',');
+      if (imageParts.length !== 2 || !imageParts[1]) {
+        throw new Error('Invalid image data format');
+      }
 
-      // Use reliable model
       const model = genAI.getGenerativeModel({
         model: "gemini-1.5-flash",
         generationConfig: {
@@ -191,7 +150,7 @@ socket.on('disconnect', () => {
           "Analyze this drawn math problem and provide step-by-step solution:",
           {
             inlineData: {
-              data: base64Data,
+              data: imageParts[1],
               mimeType: "image/png"
             }
           }
@@ -207,10 +166,10 @@ socket.on('disconnect', () => {
       io.to(data.roomId).emit('aiResponse', {
         roomId: data.roomId,
         response: text.replace(/\n/g, '<br>')
-          .replace(/\*\*/g, '')
-          .replace(/\*/g, '')
-          .replace(/\\boxed{(.*?)}/g, '$1')
-          .replace(/\$/g, '')
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+        .replace(/\\boxed{(.*?)}/g, '$1')
+        .replace(/\$/g, '')
       });
 
     } catch (error) {
@@ -233,6 +192,7 @@ socket.on('disconnect', () => {
     }
   });
 
+  // Updated draw handler with validation
   socket.on('draw', (data) => {
     if (!validateDrawData(data)) {
       logger.warn(`Invalid draw data from ${socket.id}`);
@@ -270,6 +230,17 @@ socket.on('disconnect', () => {
     } catch (error) {
       logger.error(`Clear canvas error: ${error.message}`);
     }
+  });
+
+  socket.on('disconnect', (reason) => {
+    logger.info(`Disconnected: ${socket.id} (${reason})`);
+    Array.from(socket.rooms).forEach(roomId => {
+      if (roomId !== socket.id && rooms.has(roomId)) {
+        const count = rooms.get(roomId) - 1;
+        rooms.set(roomId, count);
+        if (count <= 0) rooms.delete(roomId);
+      }
+    });
   });
 });
 
