@@ -1,5 +1,6 @@
 // Whiteboard.js
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import DOMPurify from 'dompurify'; // Install with: npm install dompurify
 
 function Whiteboard({ socket, roomId, localId }) {
   const canvasRef = useRef(null);
@@ -11,6 +12,8 @@ function Whiteboard({ socket, roomId, localId }) {
   const [lineWidth, setLineWidth] = useState(2);
   const [aiResponse, setAiResponse] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [isErasing, setIsErasing] = useState(false);
+  const [eraserSize, setEraserSize] = useState(20);
 
   const getCanvasCoordinates = useCallback((clientX, clientY) => {
     const canvas = canvasRef.current;
@@ -26,7 +29,7 @@ function Whiteboard({ socket, roomId, localId }) {
     };
   }, []);
 
-  const drawLine = useCallback((prevX, prevY, x, y, strokeColor, strokeWidth) => {
+  const drawLine = useCallback((prevX, prevY, x, y, strokeColor, strokeWidth, isErasing) => {
     if (prevX == null || prevY == null) return;
     animationFrameRef.current = requestAnimationFrame(() => {
       const context = contextRef.current;
@@ -37,14 +40,13 @@ function Whiteboard({ socket, roomId, localId }) {
       path.lineTo(x, y);
       
       context.save();
-      context.strokeStyle = strokeColor;
-      context.lineWidth = strokeWidth;
+      context.strokeStyle = isErasing ? '#FFFFFF' : strokeColor;
+      context.lineWidth = isErasing ? eraserSize : strokeWidth;
       context.stroke(path);
       context.restore();
     });
-  }, []);
+  }, [eraserSize]);
 
-  // Handle drawing events from socket
   const handleDraw = useCallback((data) => {
     if (!data.handGesture && data.senderId === localId) return;
     if (data.x == null || data.y == null) return;
@@ -58,10 +60,9 @@ function Whiteboard({ socket, roomId, localId }) {
       return;
     }
     
-    drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);
+    drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth, data.isErasing);
   }, [localId, drawLine]);
 
-  // Handle AI responses
   useEffect(() => {
     const handleAIResponse = (data) => {
       if (data.roomId === roomId) {
@@ -127,9 +128,10 @@ function Whiteboard({ socket, roomId, localId }) {
         prevY: prevCoords.current.y,
         x,
         y,
-        color,
-        lineWidth,
-        handGesture: false
+        color: isErasing ? '#FFFFFF' : color,
+        lineWidth: isErasing ? eraserSize : lineWidth,
+        handGesture: false,
+        isErasing
       });
 
       prevCoords.current = { x, y };
@@ -153,14 +155,53 @@ function Whiteboard({ socket, roomId, localId }) {
     socket?.emit('clearCanvas', { roomId, senderId: localId });
   };
 
+  const handleEraserToggle = () => {
+    setIsErasing(!isErasing);
+    if (!isErasing) {
+      contextRef.current.strokeStyle = '#FFFFFF';
+      contextRef.current.lineWidth = eraserSize;
+    } else {
+      contextRef.current.strokeStyle = color;
+      contextRef.current.lineWidth = lineWidth;
+    }
+  };
+
   return (
     <div style={styles.whiteboardContainer}>
       <div style={styles.tools}>
+        <button 
+          onClick={handleEraserToggle}
+          style={isErasing ? styles.activeEraserButton : styles.eraserButton}
+          aria-label={isErasing ? 'Disable eraser' : 'Enable eraser'}
+        >
+          {isErasing ? '✏️ Disable Eraser' : '🧹 Eraser'}
+        </button>
+        
+        {isErasing && (
+          <input
+            type="range"
+            min="10"
+            max="50"
+            value={eraserSize}
+            onChange={(e) => setEraserSize(Number(e.target.value))}
+            aria-label="Adjust eraser size"
+          />
+        )}
+        
+        <button 
+          onClick={handleClear} 
+          style={styles.clearButton}
+          aria-label="Clear whiteboard"
+        >
+          Clear
+        </button>
+        
         <label>Color: </label>
         <input 
           type="color" 
           value={color} 
           onChange={(e) => setColor(e.target.value)}
+          disabled={isErasing}
           aria-label="Select drawing color"
         />
         <label>Line Width: </label>
@@ -170,15 +211,9 @@ function Whiteboard({ socket, roomId, localId }) {
           max="10"
           value={lineWidth}
           onChange={(e) => setLineWidth(Number(e.target.value))}
+          disabled={isErasing}
           aria-label="Adjust line width"
         />
-        <button 
-          onClick={handleClear} 
-          style={styles.clearButton}
-          aria-label="Clear whiteboard"
-        >
-          Clear
-        </button>
       </div>
       
       <canvas
@@ -203,7 +238,7 @@ function Whiteboard({ socket, roomId, localId }) {
           ) : (
             <div 
               style={styles.responseText}
-              dangerouslySetInnerHTML={{ __html: aiResponse || 'Draw a math problem and pinch to analyze' }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(aiResponse) || 'Draw a math problem and pinch to analyze' }}
             />
           )}
         </div>
@@ -249,6 +284,32 @@ const styles = {
       opacity: 0.8
     }
   },
+  eraserButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    backgroundColor: '#6c757d',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    transition: 'all 0.2s',
+    ':hover': {
+      backgroundColor: '#5a6268'
+    }
+  },
+  activeEraserButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    backgroundColor: '#4F81E1',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    transition: 'all 0.2s',
+    ':hover': {
+      backgroundColor: '#3a6db7'
+    }
+  },
   aiContainer: {
     borderTop: '2px solid #4F81E1',
     backgroundColor: '#f8f9fa',
@@ -290,11 +351,6 @@ const styles = {
   responseText: {
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word'
-  },
-  placeholderText: {
-    color: '#666',
-    fontStyle: 'italic',
-    margin: 0
   }
 };
 

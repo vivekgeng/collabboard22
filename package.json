@@ -6,6 +6,7 @@
     "@mediapipe/hands": "^0.4.1675469240",
     "compression": "^1.8.0",
     "cors": "^2.8.5",
+    "dompurify": "^3.2.4",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",

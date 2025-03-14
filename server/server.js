@@ -203,6 +203,16 @@ io.on('connection', (socket) => {
     }
   });
 
+  // server.js - In the draw handler
+socket.on('draw', (data) => {
+  if (!validateDrawData(data)) return;
+  // Add isErasing to the broadcast data
+  io.to(data.roomId).emit('draw', {
+    ...data,
+    isErasing: data.isErasing || false
+  });
+});
+  
   socket.on('chatMessage', (msgData) => {
     if (!msgData?.message || !validateRoomId(msgData.roomId)) return;
     try {
