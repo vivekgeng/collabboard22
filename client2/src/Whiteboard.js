@@ -7,16 +7,11 @@ function Whiteboard({ socket, roomId, localId }) {
   const prevCoords = useRef(null);
   const isDrawing = useRef(false);
   const animationFrameRef = useRef(null);
-  
-  // State variables
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
-  const [isEraser, setIsEraser] = useState(false);
-  const [eraserSize, setEraserSize] = useState(20);
   const [aiResponse, setAiResponse] = useState('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
 
-  // Get canvas coordinates
   const getCanvasCoordinates = useCallback((clientX, clientY) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -31,7 +26,6 @@ function Whiteboard({ socket, roomId, localId }) {
     };
   }, []);
 
-  // Draw line helper function
   const drawLine = useCallback((prevX, prevY, x, y, strokeColor, strokeWidth) => {
     if (prevX == null || prevY == null) return;
     animationFrameRef.current = requestAnimationFrame(() => {
@@ -50,72 +44,46 @@ function Whiteboard({ socket, roomId, localId }) {
     });
   }, []);
 
-  // Handle incoming drawing data
+  // Handle drawing events from socket
   const handleDraw = useCallback((data) => {
     if (!data.handGesture && data.senderId === localId) return;
+    if (data.x == null || data.y == null) return;
+    
     const context = contextRef.current;
     if (!context) return;
 
+    if (data.prevX == null || data.prevY == null) {
+      context.beginPath();
+      context.moveTo(data.x, data.y);
+      return;
+    }
+    
     drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth);
   }, [localId, drawLine]);
 
-  // Start drawing
-  const startDrawing = (e) => {
-    const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
-    isDrawing.current = true;
-    prevCoords.current = { x, y };
-    
-    contextRef.current.beginPath();
-    contextRef.current.moveTo(x, y);
-    contextRef.current.strokeStyle = isEraser ? '#FFFFFF' : color;
-    contextRef.current.lineWidth = isEraser ? eraserSize : lineWidth;
-  };
+  // Handle AI responses
+  useEffect(() => {
+    const handleAIResponse = (data) => {
+      if (data.roomId === roomId) {
+        setAiResponse(data.response);
+        setIsLoadingAI(false);
+      }
+    };
 
-  // Continue drawing
-  const draw = (e) => {
-    if (!isDrawing.current || !prevCoords.current) return;
-    const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
+    const handleAIError = () => {
+      setAiResponse('Error processing request. Please try again.');
+      setIsLoadingAI(false);
+    };
 
-    animationFrameRef.current = requestAnimationFrame(() => {
-      contextRef.current.lineTo(x, y);
-      contextRef.current.stroke();
+    socket?.on('aiResponse', handleAIResponse);
+    socket?.on('aiError', handleAIError);
 
-      socket.emit('draw', {
-        roomId,
-        senderId: localId,
-        prevX: prevCoords.current.x,
-        prevY: prevCoords.current.y,
-        x,
-        y,
-        color: isEraser ? '#FFFFFF' : color,
-        lineWidth: isEraser ? eraserSize : lineWidth,
-        handGesture: false
-      });
+    return () => {
+      socket?.off('aiResponse', handleAIResponse);
+      socket?.off('aiError', handleAIError);
+    };
+  }, [socket, roomId]);
 
-      prevCoords.current = { x, y };
-    });
-  };
-
-  // Stop drawing
-  const endDrawing = () => {
-    isDrawing.current = false;
-    contextRef.current.closePath();
-    prevCoords.current = null;
-  };
-
-  // Clear canvas
-  const clearCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    context.clearRect(0, 0, canvas.width, canvas.height);
-  }, []);
-
-  const handleClear = () => {
-    clearCanvas();
-    socket.emit('clearCanvas', { roomId, senderId: localId });
-  };
-
-  // Setup effect
   useEffect(() => {
     const canvas = canvasRef.current;
     canvas.width = 640;
@@ -126,56 +94,84 @@ function Whiteboard({ socket, roomId, localId }) {
     context.lineWidth = lineWidth;
     contextRef.current = context;
 
-    socket.on('draw', handleDraw);
-    socket.on('clearCanvas', () => context.clearRect(0, 0, canvas.width, canvas.height));
+    socket?.on('draw', handleDraw);
+    socket?.on('clearCanvas', () => context.clearRect(0, 0, canvas.width, canvas.height));
 
     return () => {
-      socket.off('draw', handleDraw);
-      socket.off('clearCanvas');
+      socket?.off('draw', handleDraw);
+      socket?.off('clearCanvas');
       cancelAnimationFrame(animationFrameRef.current);
     };
   }, [socket, localId, color, lineWidth, handleDraw]);
 
+  const startDrawing = (e) => {
+    const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
+    isDrawing.current = true;
+    prevCoords.current = { x, y };
+    contextRef.current.beginPath();
+    contextRef.current.moveTo(x, y);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing.current || !prevCoords.current) return;
+    const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
+
+    animationFrameRef.current = requestAnimationFrame(() => {
+      contextRef.current.lineTo(x, y);
+      contextRef.current.stroke();
+
+      socket?.emit('draw', {
+        roomId,
+        senderId: localId,
+        prevX: prevCoords.current.x,
+        prevY: prevCoords.current.y,
+        x,
+        y,
+        color,
+        lineWidth,
+        handGesture: false
+      });
+
+      prevCoords.current = { x, y };
+    });
+  };
+
+  const endDrawing = () => {
+    isDrawing.current = false;
+    contextRef.current.closePath();
+    prevCoords.current = null;
+  };
+
+  const clearCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    context.clearRect(0, 0, canvas.width, canvas.height);
+  }, []);
+
+  const handleClear = () => {
+    clearCanvas();
+    socket?.emit('clearCanvas', { roomId, senderId: localId });
+  };
+
   return (
     <div style={styles.whiteboardContainer}>
       <div style={styles.tools}>
-        {/* Eraser/Brush Toggle */}
-        <button 
-          onClick={() => setIsEraser(!isEraser)}
-          style={isEraser ? styles.activeTool : styles.toolButton}
-        >
-          {isEraser ? '✏️ Switch to Brush' : '🧹 Eraser'}
-        </button>
-
-        {/* Color Picker (only when not erasing) */}
-        {!isEraser && (
-          <>
-            <label>Color: </label>
-            <input 
-              type="color" 
-              value={color} 
-              onChange={(e) => setColor(e.target.value)}
-              aria-label="Select drawing color"
-            />
-          </>
-        )}
-
-        {/* Size Controls */}
-        <label>{isEraser ? 'Eraser Size: ' : 'Brush Size: '}</label>
+        <label>Color: </label>
+        <input 
+          type="color" 
+          value={color} 
+          onChange={(e) => setColor(e.target.value)}
+          aria-label="Select drawing color"
+        />
+        <label>Line Width: </label>
         <input
           type="range"
           min="1"
-          max={isEraser ? 50 : 10}
-          value={isEraser ? eraserSize : lineWidth}
-          onChange={(e) => 
-            isEraser 
-              ? setEraserSize(Number(e.target.value)) 
-              : setLineWidth(Number(e.target.value))
-          }
-          aria-label="Adjust tool size"
+          max="10"
+          value={lineWidth}
+          onChange={(e) => setLineWidth(Number(e.target.value))}
+          aria-label="Adjust line width"
         />
-
-        {/* Clear Button */}
         <button 
           onClick={handleClear} 
           style={styles.clearButton}
@@ -185,7 +181,6 @@ function Whiteboard({ socket, roomId, localId }) {
         </button>
       </div>
       
-      {/* Drawing Canvas */}
       <canvas
         ref={canvasRef}
         style={styles.canvas}
@@ -197,7 +192,6 @@ function Whiteboard({ socket, roomId, localId }) {
         role="img"
       />
 
-      {/* AI Answers Section */}
       <div style={styles.aiContainer}>
         <div style={styles.aiHeader}>AI Answers</div>
         <div style={styles.aiContent}>
@@ -207,7 +201,10 @@ function Whiteboard({ socket, roomId, localId }) {
               <p>Analyzing problem...</p>
             </div>
           ) : (
-            <div dangerouslySetInnerHTML={{ __html: aiResponse || 'Draw a math problem and pinch to analyze' }} />
+            <div 
+              style={styles.responseText}
+              dangerouslySetInnerHTML={{ __html: aiResponse || 'Draw a math problem and pinch to analyze' }}
+            />
           )}
         </div>
       </div>
@@ -215,7 +212,6 @@ function Whiteboard({ socket, roomId, localId }) {
   );
 }
 
-// Styles
 const styles = {
   whiteboardContainer: {
     flex: 1,
@@ -231,21 +227,6 @@ const styles = {
     alignItems: 'center',
     gap: '10px',
     flexWrap: 'wrap'
-  },
-  toolButton: {
-    padding: '8px 16px',
-    backgroundColor: '#f0f0f0',
-    border: '1px solid #ccc',
-    borderRadius: '4px',
-    cursor: 'pointer'
-  },
-  activeTool: {
-    padding: '8px 16px',
-    backgroundColor: '#4F81E1',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer'
   },
   canvas: {
     background: '#ffffff',
@@ -305,6 +286,15 @@ const styles = {
     borderTop: '3px solid #3498db',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite'
+  },
+  responseText: {
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word'
+  },
+  placeholderText: {
+    color: '#666',
+    fontStyle: 'italic',
+    margin: 0
   }
 };
 
