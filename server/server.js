@@ -207,10 +207,20 @@ io.on('connection', (socket) => {
       logger.error(`Draw event error: ${error.message}`);
     }
     
-    if (typeof data.page !== 'number' || data.page < 0) {
-      logger.warn(`Invalid page number: ${data.page}`);
-      return;
-    }
+  if (typeof data.page !== 'number' || data.page < 0) {
+    logger.warn(`Invalid page number: ${data.page}`);
+    return;
+  }
+
+  try {
+    io.to(data.roomId).emit('draw', {
+      ...data,
+      isErasing: data.isErasing || false
+    });
+  } catch (error) {
+    logger.error(`Draw event error: ${error.message}`);
+  }
+});
   
     io.to(data.roomId).emit('draw', {
       ...data,
@@ -252,7 +262,7 @@ io.on('connection', (socket) => {
       }
     });
   });
-});
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {

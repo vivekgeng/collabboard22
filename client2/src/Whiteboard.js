@@ -4,7 +4,7 @@ import DOMPurify from 'dompurify';
 
 function Whiteboard({ socket, roomId, localId }) {
   // State management
-  const [pages, setPages] = useState([{ id: 0, data: [] }]);
+  const [pages, setPages] = useState([{ id: 0 }]);
   const [activePage, setActivePage] = useState(0);
   const canvasRefs = useRef([]);
   const contextRefs = useRef([]);
@@ -14,6 +14,8 @@ function Whiteboard({ socket, roomId, localId }) {
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
   const [eraserSize, setEraserSize] = useState(20);
+  const isDrawing = useRef(false);
+  const prevCoords = useRef(null);
 
   // Initialize canvases
   useEffect(() => {
@@ -33,7 +35,7 @@ function Whiteboard({ socket, roomId, localId }) {
 
   // Page management
   const addPage = () => {
-    const newPage = { id: pages.length, data: [] };
+    const newPage = { id: Date.now() };
     setPages(prev => [...prev, newPage]);
     setActivePage(pages.length);
   };
@@ -69,17 +71,19 @@ function Whiteboard({ socket, roomId, localId }) {
   };
 
   const startDrawing = (e) => {
+    isDrawing.current = true;
     const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
     const ctx = contextRefs.current[activePage];
     ctx.beginPath();
     ctx.moveTo(x, y);
+    prevCoords.current = { x, y };
   };
 
   const draw = (e) => {
-    const ctx = contextRefs.current[activePage];
-    if (!ctx || !e.buttons) return;
-    
+    if (!isDrawing.current) return;
     const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
+    const ctx = contextRefs.current[activePage];
+    
     ctx.lineTo(x, y);
     ctx.stroke();
 
@@ -88,11 +92,22 @@ function Whiteboard({ socket, roomId, localId }) {
       senderId: localId,
       x,
       y,
+      prevX: prevCoords.current.x,
+      prevY: prevCoords.current.y,
       color: isErasing ? '#FFFFFF' : color,
       lineWidth: isErasing ? eraserSize : lineWidth,
       page: activePage,
       isErasing
     });
+
+    prevCoords.current = { x, y };
+  };
+
+  const endDrawing = () => {
+    isDrawing.current = false;
+    const ctx = contextRefs.current[activePage];
+    ctx.closePath();
+    prevCoords.current = null;
   };
 
   // Socket handlers
@@ -103,6 +118,8 @@ function Whiteboard({ socket, roomId, localId }) {
       const ctx = contextRefs.current[activePage];
       ctx.strokeStyle = data.color;
       ctx.lineWidth = data.lineWidth;
+      ctx.beginPath();
+      ctx.moveTo(data.prevX, data.prevY);
       ctx.lineTo(data.x, data.y);
       ctx.stroke();
     };
@@ -110,6 +127,17 @@ function Whiteboard({ socket, roomId, localId }) {
     socket?.on('draw', handleDraw);
     return () => socket?.off('draw', handleDraw);
   }, [socket, activePage, localId]);
+
+  // Tool handlers
+  const handleEraserToggle = () => {
+    setIsErasing(!isErasing);
+  };
+
+  const handleClear = () => {
+    const ctx = contextRefs.current[activePage];
+    ctx.clearRect(0, 0, 640, 480);
+    socket?.emit('clearCanvas', { roomId, senderId: localId });
+  };
 
   return (
     <div style={styles.whiteboardContainer}>
