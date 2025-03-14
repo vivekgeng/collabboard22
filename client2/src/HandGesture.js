@@ -77,6 +77,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
 
   // Process drawing events
   const processDrawing = useCallback((landmarks, gesture) => {
+    
     if (!landmarks || !landmarks[8]) return;
 
     const canvas = drawingCanvasRef.current;
@@ -103,6 +104,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
             socket?.emit('draw', {
               roomId,
               senderId: localId,
+              page: activePage, 
               prevX: canvasX,
               prevY: canvasY,
               x: canvasX,
@@ -141,7 +143,7 @@ function HandGesture({ onGestureDetected, socket, roomId, localId }) {
       default:
         prevCoords.current = null;
     }
-  }, [socket, roomId, localId]);
+  }, [socket, roomId, localId, activePage]);
 
   // Handle AI submission
   const processAISubmission = useCallback(async () => {

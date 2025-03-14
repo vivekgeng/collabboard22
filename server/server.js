@@ -206,6 +206,16 @@ io.on('connection', (socket) => {
     } catch (error) {
       logger.error(`Draw event error: ${error.message}`);
     }
+    
+    if (typeof data.page !== 'number' || data.page < 0) {
+      logger.warn(`Invalid page number: ${data.page}`);
+      return;
+    }
+  
+    io.to(data.roomId).emit('draw', {
+      ...data,
+      isErasing: data.isErasing || false
+    });
   });
 
   socket.on('chatMessage', (msgData) => {

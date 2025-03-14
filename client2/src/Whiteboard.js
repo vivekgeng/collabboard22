@@ -1,14 +1,13 @@
-
-// Whiteboard.js
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import DOMPurify from 'dompurify'; // Install with: npm install dompurify
+import { jsPDF } from 'jspdf';
+import DOMPurify from 'dompurify';
 
 function Whiteboard({ socket, roomId, localId }) {
-  const canvasRef = useRef(null);
-  const contextRef = useRef(null);
-  const prevCoords = useRef(null);
-  const isDrawing = useRef(false);
-  const animationFrameRef = useRef(null);
+  // State management
+  const [pages, setPages] = useState([{ id: 0, data: [] }]);
+  const [activePage, setActivePage] = useState(0);
+  const canvasRefs = useRef([]);
+  const contextRefs = useRef([]);
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
   const [aiResponse, setAiResponse] = useState('');
@@ -16,159 +15,152 @@ function Whiteboard({ socket, roomId, localId }) {
   const [isErasing, setIsErasing] = useState(false);
   const [eraserSize, setEraserSize] = useState(20);
 
-  const getCanvasCoordinates = useCallback((clientX, clientY) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY
-    };
-  }, []);
-
-  const drawLine = useCallback((prevX, prevY, x, y, strokeColor, strokeWidth, isErasing) => {
-    if (prevX == null || prevY == null) return;
-    animationFrameRef.current = requestAnimationFrame(() => {
-      const context = contextRef.current;
-      if (!context) return;
-
-      const path = new Path2D();
-      path.moveTo(prevX, prevY);
-      path.lineTo(x, y);
-      
-      context.save();
-      context.strokeStyle = isErasing ? '#FFFFFF' : strokeColor;
-      context.lineWidth = isErasing ? eraserSize : strokeWidth;
-      context.stroke(path);
-      context.restore();
-    });
-  }, [eraserSize]);
-
-  const handleDraw = useCallback((data) => {
-    if (!data.handGesture && data.senderId === localId) return;
-    if (data.x == null || data.y == null) return;
-    
-    const context = contextRef.current;
-    if (!context) return;
-
-    if (data.prevX == null || data.prevY == null) {
-      context.beginPath();
-      context.moveTo(data.x, data.y);
-      return;
-    }
-    
-    drawLine(data.prevX, data.prevY, data.x, data.y, data.color, data.lineWidth, data.isErasing);
-  }, [localId, drawLine]);
-
+  // Initialize canvases
   useEffect(() => {
-    const handleAIResponse = (data) => {
-      if (data.roomId === roomId) {
-        setAiResponse(data.response);
-        setIsLoadingAI(false);
+    pages.forEach((_, index) => {
+      const canvas = canvasRefs.current[index];
+      if (canvas) {
+        canvas.width = 640;
+        canvas.height = 480;
+        const ctx = canvas.getContext('2d');
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        contextRefs.current[index] = ctx;
       }
+    });
+  }, [pages.length, color, lineWidth]);
+
+  // Page management
+  const addPage = () => {
+    const newPage = { id: pages.length, data: [] };
+    setPages(prev => [...prev, newPage]);
+    setActivePage(pages.length);
+  };
+
+  const removePage = (pageId) => {
+    if (pages.length === 1) return;
+    setPages(prev => prev.filter(page => page.id !== pageId));
+    setActivePage(prev => Math.max(0, prev - 1));
+  };
+
+  // PDF Generation
+  const generatePDF = () => {
+    const pdf = new jsPDF();
+    pages.forEach((page, index) => {
+      if (index > 0) pdf.addPage();
+      const canvas = canvasRefs.current[index];
+      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      const width = pdf.internal.pageSize.getWidth() - 20;
+      const height = (canvas.height * width) / canvas.width;
+      pdf.addImage(imgData, 'JPEG', 10, 10, width, height);
+    });
+    pdf.save(`${roomId}-whiteboard.pdf`);
+  };
+
+  // Drawing logic
+  const getCanvasCoordinates = (clientX, clientY) => {
+    const canvas = canvasRefs.current[activePage];
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top) * (canvas.height / rect.height)
     };
-
-    const handleAIError = () => {
-      setAiResponse('Error processing request. Please try again.');
-      setIsLoadingAI(false);
-    };
-
-    socket?.on('aiResponse', handleAIResponse);
-    socket?.on('aiError', handleAIError);
-
-    return () => {
-      socket?.off('aiResponse', handleAIResponse);
-      socket?.off('aiError', handleAIError);
-    };
-  }, [socket, roomId]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    canvas.width = 640;
-    canvas.height = 480;
-    const context = canvas.getContext('2d');
-    context.lineCap = 'round';
-    context.strokeStyle = color;
-    context.lineWidth = lineWidth;
-    contextRef.current = context;
-
-    socket?.on('draw', handleDraw);
-    socket?.on('clearCanvas', () => context.clearRect(0, 0, canvas.width, canvas.height));
-
-    return () => {
-      socket?.off('draw', handleDraw);
-      socket?.off('clearCanvas');
-      cancelAnimationFrame(animationFrameRef.current);
-    };
-  }, [socket, localId, color, lineWidth, handleDraw]);
+  };
 
   const startDrawing = (e) => {
     const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
-    isDrawing.current = true;
-    prevCoords.current = { x, y };
-    contextRef.current.beginPath();
-    contextRef.current.moveTo(x, y);
+    const ctx = contextRefs.current[activePage];
+    ctx.beginPath();
+    ctx.moveTo(x, y);
   };
 
   const draw = (e) => {
-    if (!isDrawing.current || !prevCoords.current) return;
+    const ctx = contextRefs.current[activePage];
+    if (!ctx || !e.buttons) return;
+    
     const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
 
-    animationFrameRef.current = requestAnimationFrame(() => {
-      contextRef.current.lineTo(x, y);
-      contextRef.current.stroke();
-
-      socket?.emit('draw', {
-        roomId,
-        senderId: localId,
-        prevX: prevCoords.current.x,
-        prevY: prevCoords.current.y,
-        x,
-        y,
-        color: isErasing ? '#FFFFFF' : color,
-        lineWidth: isErasing ? eraserSize : lineWidth,
-        handGesture: false,
-        isErasing
-      });
-
-      prevCoords.current = { x, y };
+    socket?.emit('draw', {
+      roomId,
+      senderId: localId,
+      x,
+      y,
+      color: isErasing ? '#FFFFFF' : color,
+      lineWidth: isErasing ? eraserSize : lineWidth,
+      page: activePage,
+      isErasing
     });
   };
 
-  const endDrawing = () => {
-    isDrawing.current = false;
-    contextRef.current.closePath();
-    prevCoords.current = null;
-  };
+  // Socket handlers
+  useEffect(() => {
+    const handleDraw = (data) => {
+      if (data.senderId === localId || data.page !== activePage) return;
+      
+      const ctx = contextRefs.current[activePage];
+      ctx.strokeStyle = data.color;
+      ctx.lineWidth = data.lineWidth;
+      ctx.lineTo(data.x, data.y);
+      ctx.stroke();
+    };
 
-  const clearCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    context.clearRect(0, 0, canvas.width, canvas.height);
-  }, []);
-
-  const handleClear = () => {
-    clearCanvas();
-    socket?.emit('clearCanvas', { roomId, senderId: localId });
-  };
-
-  const handleEraserToggle = () => {
-    setIsErasing(!isErasing);
-    if (!isErasing) {
-      contextRef.current.strokeStyle = '#FFFFFF';
-      contextRef.current.lineWidth = eraserSize;
-    } else {
-      contextRef.current.strokeStyle = color;
-      contextRef.current.lineWidth = lineWidth;
-    }
-  };
+    socket?.on('draw', handleDraw);
+    return () => socket?.off('draw', handleDraw);
+  }, [socket, activePage, localId]);
 
   return (
     <div style={styles.whiteboardContainer}>
+      <div style={styles.pageControls}>
+        <button onClick={addPage} style={styles.addButton}>
+          ➕ Add Page
+        </button>
+        
+        <div style={styles.pageTabs}>
+          {pages.map((page, index) => (
+            <div 
+              key={page.id}
+              style={index === activePage ? styles.activeTab : styles.pageTab}
+              onClick={() => setActivePage(index)}
+            >
+              Page {index + 1}
+              {pages.length > 1 && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removePage(page.id);
+                  }}
+                  style={styles.closeButton}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        
+        <button onClick={generatePDF} style={styles.pdfButton}>
+          📄 Save as PDF
+        </button>
+      </div>
+
+      {pages.map((page, index) => (
+        <canvas
+          key={page.id}
+          ref={el => canvasRefs.current[index] = el}
+          style={{ 
+            ...styles.canvas, 
+            display: index === activePage ? 'block' : 'none' 
+          }}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={() => contextRefs.current[activePage]?.closePath()}
+          onMouseLeave={() => contextRefs.current[activePage]?.closePath()}
+        />
+      ))}
+
       <div style={styles.tools}>
         <button 
           onClick={handleEraserToggle}
@@ -255,6 +247,67 @@ const styles = {
     flexDirection: 'column',
     height: '100%',
     position: 'relative'
+  },
+  
+  pageControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '10px',
+    backgroundColor: '#f5f5f5',
+    borderBottom: '1px solid #ddd'
+  },
+  pageTabs: {
+    display: 'flex',
+    gap: '5px',
+    flexGrow: 1,
+    overflowX: 'auto'
+  },
+  pageTab: {
+    padding: '8px 20px',
+    backgroundColor: '#fff',
+    border: '1px solid #ddd',
+    cursor: 'pointer',
+    position: 'relative',
+    borderRadius: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  activeTab: {
+    backgroundColor: '#4F81E1',
+    color: 'white',
+    borderColor: '#3a6db7'
+  },
+  closeButton: {
+    background: 'none',
+    border: 'none',
+    color: 'inherit',
+    cursor: 'pointer',
+    padding: '0 4px'
+  },
+  addButton: {
+    padding: '8px 16px',
+    backgroundColor: '#28a745',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer'
+  },
+  pdfButton: {
+    padding: '8px 16px',
+    backgroundColor: '#6c757d',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer'
+  },
+  canvas: {
+    background: '#ffffff',
+    cursor: 'crosshair',
+    flex: 1,
+    minHeight: 0,
+    aspectRatio: '4/3'
   },
   tools: {
     padding: '10px',
