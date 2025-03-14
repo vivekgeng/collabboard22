@@ -289,6 +289,18 @@ const styles = {
     border: 'none',
     borderRadius: '5px',
     cursor: 'pointer'
+  },
+  gestureSection: {
+    gridColumn: 2,
+    gridRow: '1 / 2',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    padding: '1rem',
+    overflow: 'hidden' // Add this line
   }
 };
 
