@@ -17,6 +17,39 @@ function Whiteboard({ socket, roomId, localId }) {
   const prevCoords = useRef(null);
 
   useEffect(() => {
+    const handleAddPage = (newPage) => {
+      setPages(prev => {
+        const updatedPages = [...prev, newPage];
+        setActivePage(updatedPages.length - 1);
+        return updatedPages;
+      });
+    };
+
+    const handleRemovePage = (pageId) => {
+      setPages(prev => {
+        const updatedPages = prev.filter(page => page.id !== pageId);
+        setActivePage(prevActive => Math.min(prevActive, updatedPages.length - 1));
+        return updatedPages;
+      });
+    };
+
+    const handleAIResponse = (data) => {
+      setAiResponse(data.response);
+      setIsLoadingAI(false);
+    };
+
+    socket?.on('addPage', handleAddPage);
+    socket?.on('removePage', handleRemovePage);
+    socket?.on('aiResponse', handleAIResponse);
+
+    return () => {
+      socket?.off('addPage', handleAddPage);
+      socket?.off('removePage', handleRemovePage);
+      socket?.off('aiResponse', handleAIResponse);
+    };
+  }, [socket]);
+
+  useEffect(() => {
     pages.forEach((_, index) => {
       const canvas = canvasRefs.current[index];
       if (canvas) {
@@ -32,15 +65,12 @@ function Whiteboard({ socket, roomId, localId }) {
   }, [pages.length, color, lineWidth]);
 
   const addPage = () => {
-    const newPage = { id: Date.now() };
-    setPages(prev => [...prev, newPage]);
-    setActivePage(pages.length);
+    socket?.emit('addPage', { roomId });
   };
 
   const removePage = (pageId) => {
     if (pages.length === 1) return;
-    setPages(prev => prev.filter(page => page.id !== pageId));
-    setActivePage(prev => Math.max(0, prev - 1));
+    socket?.emit('removePage', { roomId, pageId });
   };
 
   const generatePDF = () => {

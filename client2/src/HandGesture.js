@@ -22,10 +22,17 @@ function HandGesture({
   const genAI = useRef(null);
   const lastSubmissionTime = useRef(0);
   const [cameraStarted, setCameraStarted] = useState(false);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
 
   useEffect(() => {
     genAI.current = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
   }, []);
+
+  useEffect(() => {
+    const handleAIError = () => setIsLoadingAI(false);
+    socket?.on('aiError', handleAIError);
+    return () => socket?.off('aiError', handleAIError);
+  }, [socket]);
 
   const detectGesture = useCallback((landmarks, handedness) => {
     const FINGER_THRESHOLD = 0.07;
@@ -151,6 +158,7 @@ function HandGesture({
     const now = Date.now();
     if (now - lastSubmissionTime.current < 5000) return;
     lastSubmissionTime.current = now;
+    setIsLoadingAI(true);
 
     try {
       const canvas = drawingCanvasRef.current;
@@ -163,6 +171,7 @@ function HandGesture({
       });
     } catch (error) {
       console.error('AI submission failed:', error);
+      setIsLoadingAI(false);
     }
   }, [socket, roomId]);
 
@@ -313,6 +322,21 @@ function HandGesture({
         }}>
           <p>Starting camera...</p>
           <p>Please allow camera permissions</p>
+        </div>
+      )}
+
+      {isLoadingAI && (
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          color: 'white',
+          zIndex: 4,
+          padding: '8px',
+          background: 'rgba(0,0,0,0.7)',
+          borderRadius: '4px'
+        }}>
+          Analyzing problem...
         </div>
       )}
     </div>

@@ -103,7 +103,8 @@ io.on('connection', (socket) => {
 
   socket.on('addPage', (data) => {
     if (validateRoomId(data.roomId)) {
-      io.to(data.roomId).emit('addPage', data.page);
+      const newPage = { id: Date.now() };
+      io.to(data.roomId).emit('addPage', newPage);
     }
   });
 
