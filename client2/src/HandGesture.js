@@ -115,6 +115,7 @@ function HandGesture({
             });
             return;
           }
+
           const dx = canvasX - prevCoords.current.x;
           const dy = canvasY - prevCoords.current.y;
           const distance = Math.sqrt(dx * dx + dy * dy);

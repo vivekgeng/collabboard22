@@ -119,7 +119,8 @@ function Whiteboard({ socket, roomId, localId }) {
       color: isErasing ? '#FFFFFF' : color,
       lineWidth: isErasing ? eraserSize : lineWidth,
       page: activePage,
-      compositeOperation: isErasing ? 'destination-out' : 'source-over'
+      compositeOperation: isErasing ? 'destination-out' : 'source-over',
+      handGesture: false
     });
 
     prevCoords.current = coords;
@@ -134,7 +135,7 @@ function Whiteboard({ socket, roomId, localId }) {
 
   useEffect(() => {
     const handleDraw = (data) => {
-      if (data.senderId === localId) return;
+      if (data.senderId === localId && !data.handGesture) return;
       
       const ctx = contextRefs.current[data.page];
       if (!ctx) return;
