@@ -1,3 +1,4 @@
+// Room.js
 import React, { useEffect, useState, useCallback } from 'react';
 import io from 'socket.io-client';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -16,11 +17,6 @@ function Room() {
   const [gestureStatus, setGestureStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(false);
-  const [whiteboardSettings, setWhiteboardSettings] = useState({
-    activePage: 0,
-    color: '#000000',
-    lineWidth: 2
-  });
 
   useEffect(() => {
     const newSocket = io(SERVER_URL, {
@@ -73,10 +69,6 @@ function Room() {
     }
   }, [socket, roomId, localId]);
 
-  const handleWhiteboardChange = useCallback((newSettings) => {
-    setWhiteboardSettings(prev => ({ ...prev, ...newSettings }));
-  }, []);
-
   if (connectionError) {
     return (
       <div style={styles.errorContainer}>
@@ -122,13 +114,7 @@ function Room() {
 
       <div style={styles.mainContent}>
         <div style={styles.whiteboardSection}>
-          <Whiteboard 
-            socket={socket} 
-            roomId={roomId} 
-            localId={localId}
-            {...whiteboardSettings}
-            onSettingsChange={handleWhiteboardChange}
-          />
+          <Whiteboard socket={socket} roomId={roomId} localId={localId} />
         </div>
         
         {handGestureMode && (
@@ -137,10 +123,7 @@ function Room() {
               socket={socket} 
               roomId={roomId} 
               onGestureDetected={handleGesture} 
-              localId={localId}
-              activePage={whiteboardSettings.activePage}
-              color={whiteboardSettings.color}
-              lineWidth={whiteboardSettings.lineWidth}
+              localId={localId} 
             />
             <div style={styles.gestureStatus}>
               Active Gesture: <strong>{gestureStatus || 'None'}</strong>
@@ -157,37 +140,11 @@ function Room() {
 }
 
 const styles = {
-  mainContent: {
-    flex: 1,
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
-    gridTemplateRows: '1fr auto',
-    gap: '1rem',
-    padding: '1rem',
-    height: 'calc(100vh - 80px)',
-    // New layout definition
-    gridTemplateAreas: `
-      "whiteboard gestures"
-      "whiteboard chat"
-    `,
-    '@media (max-width: 768px)': {
-      gridTemplateColumns: '1fr',
-      gridTemplateRows: 'auto auto auto',
-      gridTemplateAreas: `
-        "whiteboard"
-        "gestures"
-        "chat"
-      `
-    }
-  },
-  whiteboardSection: {
-    gridArea: 'whiteboard',
+  container: {
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    overflow: 'hidden'
+    height: '100vh',
+    backgroundColor: '#f8f9fa'
   },
   header: {
     display: 'flex',
@@ -265,9 +222,16 @@ const styles = {
       gridTemplateRows: 'auto auto auto'
     }
   },
+  whiteboardSection: {
+    gridRow: '1 / 3',
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    overflow: 'hidden'
+  },
   gestureSection: {
-    gridArea: 'gestures',
-    height: '300px', // Fixed height for camera feed
     gridColumn: 2,
     gridRow: '1 / 2',
     display: 'flex',
@@ -276,13 +240,9 @@ const styles = {
     backgroundColor: 'white',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    padding: '1rem',
-    overflow: 'hidden'
+    padding: '1rem'
   },
   chatSection: {
-    gridArea: 'chat',
-    height: 'calc(100vh - 500px)', // Dynamic height based on viewport
-    minHeight: '200px', // Minimum chat height
     gridColumn: 2,
     gridRow: '2 / 3',
     backgroundColor: 'white',
@@ -333,3 +293,5 @@ const styles = {
 };
 
 export default React.memo(Room);
+
+

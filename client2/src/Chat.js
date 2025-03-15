@@ -89,9 +89,8 @@ const styles = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    height: '100%',
-    padding: '0 10px',
-    overflow: 'hidden' // Prevent overflow
+    height: '100%', // Ensure container takes full height
+    padding: '0 10px'
   },
   participants: {
     backgroundColor: '#f5f5f5',
@@ -109,15 +108,7 @@ const styles = {
     margin: '10px 0',
     border: '1px solid #ccc',
     padding: '10px',
-    minHeight: 0,
-    maxHeight: '400px', // Limit maximum height
-    '&::-webkit-scrollbar': {
-      width: '6px'
-    },
-    '&::-webkit-scrollbar-thumb': {
-      backgroundColor: '#4F81E1',
-      borderRadius: '3px'
-    }
+    minHeight: 0 // Crucial for flex scrolling
   },
   message: {
     marginBottom: '10px'
