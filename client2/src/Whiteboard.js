@@ -429,3 +429,5 @@ const styles = {
     animation: 'spin 1s linear infinite'
   }
 };
+
+export default React.memo(Whiteboard);
