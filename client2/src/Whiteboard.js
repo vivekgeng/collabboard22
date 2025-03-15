@@ -377,12 +377,11 @@ const styles = {
     cursor: 'pointer'
   },
   canvas: {
-    width: '640px !important', // Add !important
-    height: '480px !important', // Add !important
     background: '#ffffff',
     cursor: 'crosshair',
     flex: 1,
     minHeight: 0,
+    aspectRatio: '4/3',
     touchAction: 'none'
   },
   tools: {

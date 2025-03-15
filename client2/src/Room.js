@@ -134,7 +134,6 @@ function Room() {
         {handGestureMode && (
           <div style={styles.gestureSection}>
             <HandGesture 
-              key={Date.now()} // 👈 Add this line here
               socket={socket} 
               roomId={roomId} 
               onGestureDetected={handleGesture} 
@@ -230,12 +229,11 @@ const styles = {
   mainContent: {
     flex: 1,
     display: 'grid',
-    gridTemplateColumns: '640px minmax(0, 1fr)', // Change this line
-    gridTemplateRows: '480px auto', // Change this line
+    gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
+    gridTemplateRows: '1fr auto',
     gap: '1rem',
     padding: '1rem',
     height: 'calc(100vh - 80px)',
-    overflow: 'hidden', // Add this
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
       gridTemplateRows: 'auto auto auto'
@@ -251,8 +249,8 @@ const styles = {
     overflow: 'hidden'
   },
   gestureSection: {
-    width: '640px', // Add this
-    height: '480px', // Add this
+    gridColumn: 2,
+    gridRow: '1 / 2',
     display: 'flex',
     flexDirection: 'column',
     gap: '1rem',

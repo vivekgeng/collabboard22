@@ -198,14 +198,15 @@ function HandGesture({
   }, [socket, roomId]);
 
   useEffect(() => {
-    let camera;
     const initHandTracking = async () => {
       try {
-        if (cameraStarted) return;
         setCameraStarted(true);
-        
         const videoElement = videoRef.current;
+
         if (!videoElement) return;
+
+        videoElement.style.display = 'block';
+        videoElement.style.transform = 'scaleX(-1)';
 
         const hands = new Hands({
           locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
@@ -218,21 +219,18 @@ function HandGesture({
           minTrackingConfidence: 0.7
         });
 
-        camera = new cam.Camera(videoElement, {
+        const camera = new cam.Camera(videoElement, {
           onFrame: async () => {
             if (abortController.current.signal.aborted) return;
-            if (document.hidden) return; // Add this line
             try {
               await hands.send({ image: videoElement });
             } catch (err) {
               console.error('Error sending frame:', err);
             }
           },
-          width: 640,
-          height: 480,
-          facingMode: 'user',
-          maxFPS: 30 // Add this line
-
+          width: 480,
+          height: 360,
+          facingMode: 'user'
         });
 
         hands.onResults((results) => {
@@ -278,6 +276,18 @@ function HandGesture({
         });
 
         camera.start();
+        return () => {
+          abortController.current.abort();
+          camera.stop();
+          hands.close();
+          cancelAnimationFrame(animationFrameRef.current);
+          videoElement.style.display = 'none';
+          setCameraStarted(false);
+          
+          if (videoElement.srcObject) {
+            videoElement.srcObject.getTracks().forEach(track => track.stop());
+          }
+        };
       } catch (error) {
         console.error('Camera initialization failed:', error);
         setCameraStarted(false);
@@ -285,22 +295,6 @@ function HandGesture({
     };
 
     initHandTracking();
-
-    return () => {
-      abortController.current.abort();
-      if (camera) {
-        camera.stop();
-        camera = null;
-      }
-      cancelAnimationFrame(animationFrameRef.current);
-      
-      const videoElement = videoRef.current;
-      if (videoElement && videoElement.srcObject) {
-        videoElement.srcObject.getTracks().forEach(track => track.stop());
-        videoElement.srcObject = null;
-      }
-      setCameraStarted(false);
-    };
   }, [onGestureDetected, detectGesture, processDrawing, processAISubmission]);
 
   return (
@@ -312,7 +306,12 @@ function HandGesture({
     }}>
       <video
         ref={videoRef}
-        style={{ display: 'none' }}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'none'
+        }}
         playsInline
       />
 
