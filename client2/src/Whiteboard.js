@@ -3,8 +3,7 @@ import { jsPDF } from 'jspdf';
 import DOMPurify from 'dompurify';
 
 function Whiteboard({ socket, roomId, localId }) {
-  // State management
-  const [pages, setPages] = useState([{ id: 0, data: [] }]);
+  const [pages, setPages] = useState([{ id: Date.now() }]);
   const [activePage, setActivePage] = useState(0);
   const canvasRefs = useRef([]);
   const contextRefs = useRef([]);
@@ -14,8 +13,42 @@ function Whiteboard({ socket, roomId, localId }) {
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
   const [eraserSize, setEraserSize] = useState(20);
+  const isDrawing = useRef(false);
+  const prevCoords = useRef(null);
 
-  // Initialize canvases
+  useEffect(() => {
+    const handleAddPage = (newPage) => {
+      setPages(prev => {
+        const updatedPages = [...prev, newPage];
+        setActivePage(updatedPages.length - 1);
+        return updatedPages;
+      });
+    };
+
+    const handleRemovePage = (pageId) => {
+      setPages(prev => {
+        const updatedPages = prev.filter(page => page.id !== pageId);
+        setActivePage(prevActive => Math.min(prevActive, updatedPages.length - 1));
+        return updatedPages;
+      });
+    };
+
+    const handleAIResponse = (data) => {
+      setAiResponse(data.response);
+      setIsLoadingAI(false);
+    };
+
+    socket?.on('addPage', handleAddPage);
+    socket?.on('removePage', handleRemovePage);
+    socket?.on('aiResponse', handleAIResponse);
+
+    return () => {
+      socket?.off('addPage', handleAddPage);
+      socket?.off('removePage', handleRemovePage);
+      socket?.off('aiResponse', handleAIResponse);
+    };
+  }, [socket]);
+
   useEffect(() => {
     pages.forEach((_, index) => {
       const canvas = canvasRefs.current[index];
@@ -31,85 +64,130 @@ function Whiteboard({ socket, roomId, localId }) {
     });
   }, [pages.length, color, lineWidth]);
 
-  // Page management
   const addPage = () => {
-    const newPage = { id: pages.length, data: [] };
-    setPages(prev => [...prev, newPage]);
-    setActivePage(pages.length);
+    socket?.emit('addPage', { roomId });
   };
 
   const removePage = (pageId) => {
     if (pages.length === 1) return;
-    setPages(prev => prev.filter(page => page.id !== pageId));
-    setActivePage(prev => Math.max(0, prev - 1));
+    socket?.emit('removePage', { roomId, pageId });
   };
 
-  // PDF Generation
   const generatePDF = () => {
     const pdf = new jsPDF();
+    
     pages.forEach((page, index) => {
       if (index > 0) pdf.addPage();
-      const canvas = canvasRefs.current[index];
-      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      
+      const originalCanvas = canvasRefs.current[index];
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = originalCanvas.width;
+      tempCanvas.height = originalCanvas.height;
+      
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.fillStyle = 'white';
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.drawImage(originalCanvas, 0, 0);
+      
+      const imgData = tempCanvas.toDataURL('image/jpeg', 1.0);
       const width = pdf.internal.pageSize.getWidth() - 20;
-      const height = (canvas.height * width) / canvas.width;
+      const height = (originalCanvas.height * width) / originalCanvas.width;
+      
       pdf.addImage(imgData, 'JPEG', 10, 10, width, height);
     });
+
     pdf.save(`${roomId}-whiteboard.pdf`);
   };
 
-  // Drawing logic
-  const getCanvasCoordinates = (clientX, clientY) => {
+  const getCanvasCoordinates = (e) => {
     const canvas = canvasRefs.current[activePage];
     const rect = canvas.getBoundingClientRect();
     return {
-      x: (clientX - rect.left) * (canvas.width / rect.width),
-      y: (clientY - rect.top) * (canvas.height / rect.height)
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height)
     };
   };
 
+  const handleEraserToggle = () => {
+    setIsErasing(prev => {
+      pages.forEach((_, index) => {
+        const ctx = contextRefs.current[index];
+        if (ctx) {
+          ctx.strokeStyle = !prev ? '#FFFFFF' : color;
+          ctx.lineWidth = !prev ? eraserSize : lineWidth;
+          ctx.globalCompositeOperation = !prev ? 'destination-out' : 'source-over';
+        }
+      });
+      return !prev;
+    });
+  };
+
   const startDrawing = (e) => {
-    const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
+    isDrawing.current = true;
+    const coords = getCanvasCoordinates(e);
     const ctx = contextRefs.current[activePage];
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.moveTo(coords.x, coords.y);
+    prevCoords.current = coords;
   };
 
   const draw = (e) => {
+    if (!isDrawing.current) return;
+    const coords = getCanvasCoordinates(e);
     const ctx = contextRefs.current[activePage];
-    if (!ctx || !e.buttons) return;
     
-    const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
-    ctx.lineTo(x, y);
+    ctx.lineTo(coords.x, coords.y);
     ctx.stroke();
 
     socket?.emit('draw', {
       roomId,
       senderId: localId,
-      x,
-      y,
+      x: coords.x,
+      y: coords.y,
+      prevX: prevCoords.current.x,
+      prevY: prevCoords.current.y,
       color: isErasing ? '#FFFFFF' : color,
       lineWidth: isErasing ? eraserSize : lineWidth,
       page: activePage,
-      isErasing
+      compositeOperation: isErasing ? 'destination-out' : 'source-over',
+      handGesture: false
     });
+
+    prevCoords.current = coords;
   };
 
-  // Socket handlers
+  const endDrawing = () => {
+    isDrawing.current = false;
+    const ctx = contextRefs.current[activePage];
+    ctx.closePath();
+    prevCoords.current = null;
+  };
+
   useEffect(() => {
     const handleDraw = (data) => {
-      if (data.senderId === localId || data.page !== activePage) return;
+      if (data.senderId === localId && !data.handGesture) return;
       
-      const ctx = contextRefs.current[activePage];
+      const ctx = contextRefs.current[data.page];
+      if (!ctx) return;
+
       ctx.strokeStyle = data.color;
       ctx.lineWidth = data.lineWidth;
+      ctx.globalCompositeOperation = data.compositeOperation;
+      ctx.beginPath();
+      ctx.moveTo(data.prevX, data.prevY);
       ctx.lineTo(data.x, data.y);
       ctx.stroke();
     };
 
     socket?.on('draw', handleDraw);
     return () => socket?.off('draw', handleDraw);
-  }, [socket, activePage, localId]);
+  }, [socket, localId]);
+
+  const handleClear = () => {
+    const ctx = contextRefs.current[activePage];
+    ctx.clearRect(0, 0, 640, 480);
+    socket?.emit('clearCanvas', { roomId, senderId: localId });
+  };
 
   return (
     <div style={styles.whiteboardContainer}>
@@ -149,15 +227,15 @@ function Whiteboard({ socket, roomId, localId }) {
       {pages.map((page, index) => (
         <canvas
           key={page.id}
-          ref={el => canvasRefs.current[index] = el}
+          ref={el => (canvasRefs.current[index] = el)}
           style={{ 
             ...styles.canvas, 
             display: index === activePage ? 'block' : 'none' 
           }}
           onMouseDown={startDrawing}
           onMouseMove={draw}
-          onMouseUp={() => contextRefs.current[activePage]?.closePath()}
-          onMouseLeave={() => contextRefs.current[activePage]?.closePath()}
+          onMouseUp={endDrawing}
+          onMouseLeave={endDrawing}
         />
       ))}
 
@@ -165,7 +243,6 @@ function Whiteboard({ socket, roomId, localId }) {
         <button 
           onClick={handleEraserToggle}
           style={isErasing ? styles.activeEraserButton : styles.eraserButton}
-          aria-label={isErasing ? 'Disable eraser' : 'Enable eraser'}
         >
           {isErasing ? '✏️ Disable Eraser' : '🧹 Eraser'}
         </button>
@@ -177,27 +254,20 @@ function Whiteboard({ socket, roomId, localId }) {
             max="50"
             value={eraserSize}
             onChange={(e) => setEraserSize(Number(e.target.value))}
-            aria-label="Adjust eraser size"
           />
         )}
         
-        <button 
-          onClick={handleClear} 
-          style={styles.clearButton}
-          aria-label="Clear whiteboard"
-        >
+        <button onClick={handleClear} style={styles.clearButton}>
           Clear
         </button>
         
-        <label>Color: </label>
         <input 
           type="color" 
           value={color} 
           onChange={(e) => setColor(e.target.value)}
           disabled={isErasing}
-          aria-label="Select drawing color"
         />
-        <label>Line Width: </label>
+        
         <input
           type="range"
           min="1"
@@ -205,20 +275,8 @@ function Whiteboard({ socket, roomId, localId }) {
           value={lineWidth}
           onChange={(e) => setLineWidth(Number(e.target.value))}
           disabled={isErasing}
-          aria-label="Adjust line width"
         />
       </div>
-      
-      <canvas
-        ref={canvasRef}
-        style={styles.canvas}
-        onMouseDown={startDrawing}
-        onMouseMove={draw}
-        onMouseUp={endDrawing}
-        onMouseLeave={endDrawing}
-        aria-label="Collaborative whiteboard"
-        role="img"
-      />
 
       <div style={styles.aiContainer}>
         <div style={styles.aiHeader}>AI Answers</div>
@@ -230,8 +288,9 @@ function Whiteboard({ socket, roomId, localId }) {
             </div>
           ) : (
             <div 
-              style={styles.responseText}
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(aiResponse) || 'Draw a math problem and pinch to analyze' }}
+              dangerouslySetInnerHTML={{ 
+                __html: DOMPurify.sanitize(aiResponse) || 'Draw a math problem and pinch to analyze' 
+              }}
             />
           )}
         </div>
@@ -245,10 +304,9 @@ const styles = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    height: '100%',
+    height: '100vh',
     position: 'relative'
   },
-  
   pageControls: {
     display: 'flex',
     alignItems: 'center',
@@ -268,8 +326,8 @@ const styles = {
     backgroundColor: '#fff',
     border: '1px solid #ddd',
     cursor: 'pointer',
-    position: 'relative',
     borderRadius: '4px',
+    position: 'relative',
     display: 'flex',
     alignItems: 'center',
     gap: '8px'
@@ -307,7 +365,8 @@ const styles = {
     cursor: 'crosshair',
     flex: 1,
     minHeight: 0,
-    aspectRatio: '4/3'
+    aspectRatio: '4/3',
+    touchAction: 'none'
   },
   tools: {
     padding: '10px',
@@ -317,82 +376,49 @@ const styles = {
     gap: '10px',
     flexWrap: 'wrap'
   },
-  canvas: {
-    background: '#ffffff',
-    cursor: 'crosshair',
-    touchAction: 'none',
-    flex: 1,
-    minHeight: 0,
-    aspectRatio: '4/3'
-  },
   clearButton: {
     padding: '8px 16px',
-    fontSize: '14px',
-    cursor: 'pointer',
     backgroundColor: '#dc3545',
-    color: '#fff',
+    color: 'white',
     border: 'none',
     borderRadius: '4px',
-    transition: 'opacity 0.2s',
-    ':hover': {
-      opacity: 0.8
-    }
+    cursor: 'pointer'
   },
   eraserButton: {
     padding: '8px 16px',
-    fontSize: '14px',
-    cursor: 'pointer',
     backgroundColor: '#6c757d',
-    color: '#fff',
+    color: 'white',
     border: 'none',
     borderRadius: '4px',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#5a6268'
-    }
+    cursor: 'pointer'
   },
   activeEraserButton: {
-    padding: '8px 16px',
-    fontSize: '14px',
-    cursor: 'pointer',
     backgroundColor: '#4F81E1',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#3a6db7'
-    }
+    color: 'white'
   },
   aiContainer: {
     borderTop: '2px solid #4F81E1',
     backgroundColor: '#f8f9fa',
     height: '150px',
-    minHeight: '150px',
-    display: 'flex',
-    flexDirection: 'column'
+    minHeight: '150px'
   },
   aiHeader: {
     backgroundColor: '#4F81E1',
     color: 'white',
     padding: '10px',
-    fontWeight: 'bold',
-    fontSize: '1.1rem'
+    fontWeight: 'bold'
   },
   aiContent: {
-    flex: 1,
     padding: '15px',
     overflowY: 'auto',
-    fontSize: '0.9rem',
-    lineHeight: '1.5'
+    height: '100%'
   },
   loadingContainer: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    height: '100%',
-    gap: '0.5rem'
+    height: '100%'
   },
   spinner: {
     width: '30px',
@@ -401,10 +427,6 @@ const styles = {
     borderTop: '3px solid #3498db',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite'
-  },
-  responseText: {
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word'
   }
 };
 

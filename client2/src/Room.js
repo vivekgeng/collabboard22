@@ -1,4 +1,3 @@
-// Room.js
 import React, { useEffect, useState, useCallback } from 'react';
 import io from 'socket.io-client';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -17,6 +16,11 @@ function Room() {
   const [gestureStatus, setGestureStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(false);
+  const [whiteboardSettings, setWhiteboardSettings] = useState({
+    activePage: 0,
+    color: '#000000',
+    lineWidth: 2
+  });
 
   useEffect(() => {
     const newSocket = io(SERVER_URL, {
@@ -69,6 +73,10 @@ function Room() {
     }
   }, [socket, roomId, localId]);
 
+  const handleWhiteboardChange = useCallback((newSettings) => {
+    setWhiteboardSettings(prev => ({ ...prev, ...newSettings }));
+  }, []);
+
   if (connectionError) {
     return (
       <div style={styles.errorContainer}>
@@ -114,7 +122,13 @@ function Room() {
 
       <div style={styles.mainContent}>
         <div style={styles.whiteboardSection}>
-          <Whiteboard socket={socket} roomId={roomId} localId={localId} />
+          <Whiteboard 
+            socket={socket} 
+            roomId={roomId} 
+            localId={localId}
+            {...whiteboardSettings}
+            onSettingsChange={handleWhiteboardChange}
+          />
         </div>
         
         {handGestureMode && (
@@ -123,7 +137,10 @@ function Room() {
               socket={socket} 
               roomId={roomId} 
               onGestureDetected={handleGesture} 
-              localId={localId} 
+              localId={localId}
+              activePage={whiteboardSettings.activePage}
+              color={whiteboardSettings.color}
+              lineWidth={whiteboardSettings.lineWidth}
             />
             <div style={styles.gestureStatus}>
               Active Gesture: <strong>{gestureStatus || 'None'}</strong>
@@ -240,7 +257,8 @@ const styles = {
     backgroundColor: 'white',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    padding: '1rem'
+    padding: '1rem',
+    overflow: 'hidden'
   },
   chatSection: {
     gridColumn: 2,
@@ -293,5 +311,3 @@ const styles = {
 };
 
 export default React.memo(Room);
-
-
