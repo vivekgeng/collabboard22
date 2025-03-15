@@ -215,8 +215,8 @@ function HandGesture({
         hands.setOptions({
           maxNumHands: 1,
           modelComplexity: 0,
-          minDetectionConfidence: 0.7,
-          minTrackingConfidence: 0.7
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
         });
 
         const camera = new cam.Camera(videoElement, {

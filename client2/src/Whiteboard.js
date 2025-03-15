@@ -48,6 +48,15 @@ function Whiteboard({ socket, roomId, localId }) {
       socket?.off('aiResponse', handleAIResponse);
     };
   }, [socket]);
+  
+  useEffect(() => {
+    if (aiResponse) {
+      const container = document.querySelector('.ai-content-container');
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  }, [aiResponse]);
 
   useEffect(() => {
     pages.forEach((_, index) => {
@@ -399,8 +408,10 @@ const styles = {
   aiContainer: {
     borderTop: '2px solid #4F81E1',
     backgroundColor: '#f8f9fa',
-    height: '150px',
-    minHeight: '150px'
+    flex: '0 0 150px', // Fixed height with flex basis
+    minHeight: '150px',
+    display: 'flex',
+    flexDirection: 'column'
   },
   aiHeader: {
     backgroundColor: '#4F81E1',
@@ -411,7 +422,11 @@ const styles = {
   aiContent: {
     padding: '15px',
     overflowY: 'auto',
-    height: '100%'
+    flex: 1,
+    // Auto-scroll to bottom when content updates
+    '& > div': {
+      minHeight: 'min-content'
+    }
   },
   loadingContainer: {
     display: 'flex',

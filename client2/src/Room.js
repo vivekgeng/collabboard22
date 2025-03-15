@@ -157,11 +157,37 @@ function Room() {
 }
 
 const styles = {
-  container: {
+  mainContent: {
+    flex: 1,
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
+    gridTemplateRows: '1fr auto',
+    gap: '1rem',
+    padding: '1rem',
+    height: 'calc(100vh - 80px)',
+    // New layout definition
+    gridTemplateAreas: `
+      "whiteboard gestures"
+      "whiteboard chat"
+    `,
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+      gridTemplateRows: 'auto auto auto',
+      gridTemplateAreas: `
+        "whiteboard"
+        "gestures"
+        "chat"
+      `
+    }
+  },
+  whiteboardSection: {
+    gridArea: 'whiteboard',
     display: 'flex',
     flexDirection: 'column',
-    height: '100vh',
-    backgroundColor: '#f8f9fa'
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    overflow: 'hidden'
   },
   header: {
     display: 'flex',
@@ -239,16 +265,9 @@ const styles = {
       gridTemplateRows: 'auto auto auto'
     }
   },
-  whiteboardSection: {
-    gridRow: '1 / 3',
-    display: 'flex',
-    flexDirection: 'column',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    overflow: 'hidden'
-  },
   gestureSection: {
+    gridArea: 'gestures',
+    height: '300px', // Fixed height for camera feed
     gridColumn: 2,
     gridRow: '1 / 2',
     display: 'flex',
@@ -261,6 +280,9 @@ const styles = {
     overflow: 'hidden'
   },
   chatSection: {
+    gridArea: 'chat',
+    height: 'calc(100vh - 500px)', // Dynamic height based on viewport
+    minHeight: '200px', // Minimum chat height
     gridColumn: 2,
     gridRow: '2 / 3',
     backgroundColor: 'white',
