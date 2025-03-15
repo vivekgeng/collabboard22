@@ -221,15 +221,18 @@ function HandGesture({
         camera = new cam.Camera(videoElement, {
           onFrame: async () => {
             if (abortController.current.signal.aborted) return;
+            if (document.hidden) return; // Add this line
             try {
               await hands.send({ image: videoElement });
             } catch (err) {
               console.error('Error sending frame:', err);
             }
           },
-          width: 480,
-          height: 360,
-          facingMode: 'user'
+          width: 640,
+          height: 480,
+          facingMode: 'user',
+          maxFPS: 30 // Add this line
+
         });
 
         hands.onResults((results) => {
