@@ -16,3 +16,7 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.ai-content strong { font-weight: bold; }
+.ai-content em { font-style: italic; }
+.math-box { border: 1px solid #ccc; padding: 2px; }

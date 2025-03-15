@@ -52,7 +52,7 @@ function Whiteboard({ socket, roomId, localId }) {
   useEffect(() => {
     pages.forEach((_, index) => {
       const canvas = canvasRefs.current[index];
-      if (canvas && !contextRefs.current[index]) {
+      if (canvas) {
         canvas.width = 640;
         canvas.height = 480;
         const ctx = canvas.getContext('2d');
@@ -63,22 +63,6 @@ function Whiteboard({ socket, roomId, localId }) {
       }
     });
   }, [pages.length, color, lineWidth]);
-
-  const preserveCanvasState = (pageIndex) => {
-    if (pageIndex === activePage) return;
-    
-    const canvas = canvasRefs.current[pageIndex];
-    const ctx = contextRefs.current[pageIndex];
-    if (canvas && ctx) {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      ctx.putImageData(imageData, 0, 0);
-    }
-  };
-
-  const switchPage = (index) => {
-    preserveCanvasState(activePage);
-    setActivePage(index);
-  };
 
   const addPage = () => {
     socket?.emit('addPage', { roomId });
@@ -217,7 +201,7 @@ function Whiteboard({ socket, roomId, localId }) {
             <div 
               key={page.id}
               style={index === activePage ? styles.activeTab : styles.pageTab}
-              onClick={() => switchPage(index)}
+              onClick={() => setActivePage(index)}
             >
               Page {index + 1}
               {pages.length > 1 && (
@@ -377,12 +361,13 @@ const styles = {
     cursor: 'pointer'
   },
   canvas: {
-    background: '#ffffff',
+    background: '#ffffff', // Ensure white background
     cursor: 'crosshair',
     flex: 1,
     minHeight: 0,
     aspectRatio: '4/3',
-    touchAction: 'none'
+    touchAction: 'none',
+    imageRendering: 'crisp-edges' // Keep lines sharp
   },
   tools: {
     padding: '10px',
@@ -413,7 +398,7 @@ const styles = {
     color: 'white'
   },
   aiContainer: {
-    borderTop: '1px solid #4F81E1',
+    borderTop: '2px solid #4F81E1',
     backgroundColor: '#f8f9fa',
     height: '150px',
     minHeight: '150px'

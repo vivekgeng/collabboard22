@@ -77,25 +77,6 @@ const validateDrawData = (data) => {
          validateRoomId(data.roomId);
 };
 
-const validateAIImage = (imageData) => {
-  try {
-    if (!imageData?.includes('base64')) return false;
-    
-    const [header, data] = imageData.split(',');
-    if (!header || !data) return false;
-    
-    const contentSize = Buffer.byteLength(data, 'base64');
-    if (contentSize < 1024 * 5) {
-      throw new Error(`Image too small: ${contentSize} bytes`);
-    }
-    
-    return true;
-  } catch (error) {
-    logger.error(`Image validation failed: ${error.message}`);
-    return false;
-  }
-};
-
 io.on('connection', (socket) => {
   logger.info(`New connection: ${socket.id}`);
 
@@ -142,13 +123,6 @@ io.on('connection', (socket) => {
       });
     }
 
-    if (!validateAIImage(data.image)) {
-      return socket.emit('aiError', {
-        roomId: data.roomId,
-        message: 'Please draw larger and clearer (minimum 5KB image required)'
-      });
-    }
-
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();
@@ -157,15 +131,26 @@ io.on('connection', (socket) => {
 
     try {
       const imageParts = data.image.split(',');
+      if (imageParts.length !== 2 || !imageParts[1]) {
+        throw new Error('Invalid image data format');
+      }
+
+      const maxSize = 4 * 1024 * 1024;
+      if (Buffer.byteLength(imageParts[1], 'base64') > maxSize) {
+        throw new Error('Image too large');
+      }
+
       const model = genAI.getGenerativeModel({
         model: "gemini-1.5-flash",
         generationConfig: {
-          maxOutputTokens: 1000,
-          temperature: 0.5
+          maxOutputTokens: 1500,
+          temperature: 0.4
         },
         systemInstruction: {
-          parts: [{ 
-            text: "You are a math expert. Analyze drawn equations and provide step-by-step solutions in simple language." 
+          parts: [{
+            text: "You are a patient math tutor. Analyze handwritten problems carefully. " +
+                  "Look for numbers, symbols, and equations. If unsure, make reasonable " +
+                  "assumptions and state them. Present solutions step-by-step with clear explanations."
           }]
         }
       });
@@ -174,11 +159,11 @@ io.on('connection', (socket) => {
       
       const result = await model.generateContent(
         [
-          "Analyze this drawn math problem and provide step-by-step solution:",
+          data.prompt || "Analyze this drawn math problem and provide step-by-step solution:",
           {
             inlineData: {
               data: imageParts[1],
-              mimeType: "image/png"
+              mimeType: "image/jpeg"
             }
           }
         ],
@@ -193,10 +178,10 @@ io.on('connection', (socket) => {
       io.to(data.roomId).emit('aiResponse', {
         roomId: data.roomId,
         response: text.replace(/\n/g, '<br>')
-        .replace(/\*\*/g, '')
-        .replace(/\*/g, '')
-        .replace(/\\boxed{(.*?)}/g, '$1')
-        .replace(/\$/g, '')
+          .replace(/\*\*/g, '')
+          .replace(/\*/g, '')
+          .replace(/\\boxed{(.*?)}/g, '$1')
+          .replace(/\$/g, '')
       });
 
     } catch (error) {
@@ -206,8 +191,10 @@ io.on('connection', (socket) => {
       let errorMessage = 'Failed to process request';
       if (error.message.includes('quota')) {
         errorMessage = 'API quota exceeded';
-      } else if (error.message.includes('invalid')) {
+      } else if (error.message.includes('invalid') || error.message.includes('format')) {
         errorMessage = 'Invalid image format';
+      } else if (error.message.includes('large')) {
+        errorMessage = 'Image size exceeds 4MB limit';
       } else if (error.name === 'AbortError') {
         errorMessage = 'Request timed out';
       }

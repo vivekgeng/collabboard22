@@ -23,7 +23,20 @@ function HandGesture({
   const lastSubmissionTime = useRef(0);
   const [cameraStarted, setCameraStarted] = useState(false);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
-  const lastFrameRef = useRef(Date.now());
+
+  useEffect(() => {
+    const updateCanvasDimensions = () => {
+      [videoCanvasRef, drawingCanvasRef].forEach(ref => {
+        if (ref.current) {
+          ref.current.width = ref.current.clientWidth;
+          ref.current.height = ref.current.clientHeight;
+        }
+      });
+    };
+    window.addEventListener('resize', updateCanvasDimensions);
+    updateCanvasDimensions();
+    return () => window.removeEventListener('resize', updateCanvasDimensions);
+  }, []);
 
   useEffect(() => {
     genAI.current = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
@@ -162,37 +175,41 @@ function HandGesture({
     setIsLoadingAI(true);
 
     try {
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = 640;
-      tempCanvas.height = 480;
-      const ctx = tempCanvas.getContext('2d');
-      
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-      ctx.drawImage(drawingCanvasRef.current, 0, 0);
-      
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.strokeStyle = 'black';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(0, 0, tempCanvas.width, tempCanvas.height);
+      const canvas = drawingCanvasRef.current;
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      const contentPixels = [...imageData].filter(val => val < 255).length;
 
-      const imageData = tempCanvas.toDataURL('image/jpeg', 0.95);
-      
-      if (!imageData.startsWith('data:image/jpeg')) {
-        throw new Error('Invalid image encoding');
+      if (contentPixels < 100) {
+        throw new Error('Drawing too simple');
       }
+
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width * 2;
+      tempCanvas.height = canvas.height * 2;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      tempCtx.fillStyle = 'white';
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+
+      const enhancedImage = tempCanvas.toDataURL('image/jpeg', 0.9);
 
       socket?.emit('processWithAI', {
         roomId,
-        image: imageData,
-        prompt: "Solve this math problem step by step. If it's not a math problem, say 'Please draw a math problem'."
+        image: enhancedImage,
+        prompt: "Analyze this handwritten math problem carefully. " +
+                "Even if some parts are unclear, try to make educated guesses. " +
+                "Provide a step-by-step solution in clear, simple language."
       });
     } catch (error) {
       console.error('AI submission failed:', error);
       setIsLoadingAI(false);
-      socket?.emit('aiError', {
+      socket?.emit('aiError', { 
         roomId,
-        message: 'Please draw clearer and try again'
+        message: error.message === 'Drawing too simple' 
+          ? 'Please draw a more complete problem before submitting'
+          : 'AI processing failed. Please try again.'
       });
     }
   }, [socket, roomId]);
@@ -213,10 +230,10 @@ function HandGesture({
         });
 
         hands.setOptions({
-          maxNumHands: 1,
-          modelComplexity: 0,
-          minDetectionConfidence: 0.7,
-          minTrackingConfidence: 0.7
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.8,
+          minTrackingConfidence: 0.8,
         });
 
         const camera = new cam.Camera(videoElement, {
@@ -228,16 +245,11 @@ function HandGesture({
               console.error('Error sending frame:', err);
             }
           },
-          width: 480,
-          height: 360,
-          facingMode: 'user'
+          width: 640,
+          height: 480
         });
 
         hands.onResults((results) => {
-          const now = Date.now();
-          if (now - lastFrameRef.current < 100) return;
-          lastFrameRef.current = now;
-
           if (!videoCanvasRef.current || !drawingCanvasRef.current) return;
 
           const videoCtx = videoCanvasRef.current.getContext('2d');
@@ -246,7 +258,7 @@ function HandGesture({
           videoCtx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
           videoCtx.save();
           videoCtx.scale(-1, 1);
-          videoCtx.drawImage(results.image, -videoCanvasRef.current.width, 0);
+          videoCtx.drawImage(results.image, -640, 0);
           videoCtx.restore();
 
           if (results.multiHandLandmarks) {
@@ -283,10 +295,6 @@ function HandGesture({
           cancelAnimationFrame(animationFrameRef.current);
           videoElement.style.display = 'none';
           setCameraStarted(false);
-          
-          if (videoElement.srcObject) {
-            videoElement.srcObject.getTracks().forEach(track => track.stop());
-          }
         };
       } catch (error) {
         console.error('Camera initialization failed:', error);
@@ -300,9 +308,11 @@ function HandGesture({
   return (
     <div style={{
       position: 'relative',
-      width: '640px',
-      height: '480px',
-      backgroundColor: '#000'
+      width: '100%',
+      height: '100%',
+      backgroundColor: '#000',
+      overflow: 'hidden',
+      aspectRatio: '4/3'
     }}>
       <video
         ref={videoRef}
@@ -323,6 +333,8 @@ function HandGesture({
           position: 'absolute',
           top: 0,
           left: 0,
+          width: '100%',
+          height: '100%',
           zIndex: 1,
           pointerEvents: 'none'
         }}
