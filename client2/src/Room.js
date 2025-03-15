@@ -171,7 +171,9 @@ const styles = {
     padding: '1rem 2rem',
     backgroundColor: '#ffffff',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    zIndex: 100
+    zIndex: 1000, // Increased z-index
+    flexShrink: 0, // Prevent header shrinking
+    height: '80px' // Fixed height
   },
   title: {
     fontSize: '1.5rem',
