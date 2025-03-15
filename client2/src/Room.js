@@ -134,6 +134,7 @@ function Room() {
         {handGestureMode && (
           <div style={styles.gestureSection}>
             <HandGesture 
+              key={Date.now()} // 👈 Add this line here
               socket={socket} 
               roomId={roomId} 
               onGestureDetected={handleGesture} 
