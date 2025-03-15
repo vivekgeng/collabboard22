@@ -228,8 +228,8 @@ function HandGesture({
               console.error('Error sending frame:', err);
             }
           },
-          width: 480,
-          height: 360,
+          width: 640,
+          height: 480,
           facingMode: 'user'
         });
 
