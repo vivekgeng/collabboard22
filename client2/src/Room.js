@@ -161,6 +161,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
+    overflow: 'hidden', // Prevent entire page scrolling
     backgroundColor: '#f8f9fa'
   },
   header: {
@@ -230,23 +231,28 @@ const styles = {
     flex: 1,
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
-    gridTemplateRows: '1fr auto',
+    gridTemplateRows: '1fr', // Single row
     gap: '1rem',
     padding: '1rem',
-    height: 'calc(100vh - 80px)',
+    height: 'calc(100vh - 80px)', // Subtract header height
+    gridTemplateAreas: `
+      "whiteboard sidebar"
+    `,
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
-      gridTemplateRows: 'auto auto auto'
+      gridTemplateRows: '2fr 1fr',
+      gridTemplateAreas: `
+        "whiteboard"
+        "sidebar"
+      `
     }
   },
   whiteboardSection: {
-    gridRow: '1 / 3',
+    gridArea: 'whiteboard',
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    overflow: 'hidden'
+    height: '100%',
+    minHeight: 0 // Crucial for overflow control
   },
   gestureSection: {
     gridColumn: 2,

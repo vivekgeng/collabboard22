@@ -397,10 +397,9 @@ const styles = {
     color: 'white'
   },
   aiContainer: {
-    borderTop: '2px solid #4F81E1',
-    backgroundColor: '#f8f9fa',
-    height: '150px',
-    minHeight: '150px'
+    height: '150px', // Fixed height
+    overflow: 'auto',
+    flexShrink: 0 // Prevent shrinking
   },
   aiHeader: {
     backgroundColor: '#4F81E1',
