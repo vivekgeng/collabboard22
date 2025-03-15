@@ -77,6 +77,21 @@ const validateDrawData = (data) => {
          validateRoomId(data.roomId);
 };
 
+const validateAIImage = (imageData) => {
+  try {
+    const imageParts = imageData.split(',');
+    if (imageParts.length !== 2) return false;
+    
+    const base64Length = imageParts[1].length;
+    const sizeInBytes = 4 * Math.ceil(base64Length / 3) * 0.5624896334383812;
+    if (sizeInBytes < 50000) return false;
+    
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 io.on('connection', (socket) => {
   logger.info(`New connection: ${socket.id}`);
 
@@ -123,6 +138,14 @@ io.on('connection', (socket) => {
       });
     }
 
+    if (!validateAIImage(data.image)) {
+      logger.error('Invalid image data');
+      return socket.emit('aiError', {
+        roomId: data.roomId,
+        message: 'Please draw larger and clearer'
+      });
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();
@@ -131,10 +154,6 @@ io.on('connection', (socket) => {
 
     try {
       const imageParts = data.image.split(',');
-      if (imageParts.length !== 2 || !imageParts[1]) {
-        throw new Error('Invalid image data format');
-      }
-
       const model = genAI.getGenerativeModel({
         model: "gemini-1.5-flash",
         generationConfig: {

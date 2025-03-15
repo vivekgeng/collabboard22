@@ -23,6 +23,7 @@ function HandGesture({
   const lastSubmissionTime = useRef(0);
   const [cameraStarted, setCameraStarted] = useState(false);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const lastFrameRef = useRef(Date.now());
 
   useEffect(() => {
     genAI.current = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
@@ -161,8 +162,16 @@ function HandGesture({
     setIsLoadingAI(true);
 
     try {
-      const canvas = drawingCanvasRef.current;
-      const imageData = canvas.toDataURL('image/png');
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 640;
+      tempCanvas.height = 480;
+      const ctx = tempCanvas.getContext('2d');
+      
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      ctx.drawImage(drawingCanvasRef.current, 0, 0);
+      
+      const imageData = tempCanvas.toDataURL('image/jpeg', 0.9);
 
       socket?.emit('processWithAI', {
         roomId,
@@ -191,10 +200,10 @@ function HandGesture({
         });
 
         hands.setOptions({
-          maxNumHands: 2,
-          modelComplexity: 1,
-          minDetectionConfidence: 0.8,
-          minTrackingConfidence: 0.8,
+          maxNumHands: 1,
+          modelComplexity: 0,
+          minDetectionConfidence: 0.7,
+          minTrackingConfidence: 0.7
         });
 
         const camera = new cam.Camera(videoElement, {
@@ -206,11 +215,16 @@ function HandGesture({
               console.error('Error sending frame:', err);
             }
           },
-          width: 640,
-          height: 480
+          width: 480,
+          height: 360,
+          facingMode: 'user'
         });
 
         hands.onResults((results) => {
+          const now = Date.now();
+          if (now - lastFrameRef.current < 100) return;
+          lastFrameRef.current = now;
+
           if (!videoCanvasRef.current || !drawingCanvasRef.current) return;
 
           const videoCtx = videoCanvasRef.current.getContext('2d');
@@ -219,7 +233,7 @@ function HandGesture({
           videoCtx.clearRect(0, 0, videoCanvasRef.current.width, videoCanvasRef.current.height);
           videoCtx.save();
           videoCtx.scale(-1, 1);
-          videoCtx.drawImage(results.image, -640, 0);
+          videoCtx.drawImage(results.image, -videoCanvasRef.current.width, 0);
           videoCtx.restore();
 
           if (results.multiHandLandmarks) {
@@ -256,6 +270,10 @@ function HandGesture({
           cancelAnimationFrame(animationFrameRef.current);
           videoElement.style.display = 'none';
           setCameraStarted(false);
+          
+          if (videoElement.srcObject) {
+            videoElement.srcObject.getTracks().forEach(track => track.stop());
+          }
         };
       } catch (error) {
         console.error('Camera initialization failed:', error);
