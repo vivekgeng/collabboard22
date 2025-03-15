@@ -257,16 +257,12 @@ const styles = {
     minHeight: 0 // Crucial for overflow control
   },
   gestureSection: {
-    gridColumn: 2,
-    gridRow: '1 / 2',
+    gridArea: 'sidebar',
     display: 'flex',
     flexDirection: 'column',
+    height: '100%',
     gap: '1rem',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    padding: '1rem',
-    overflow: 'hidden'
+    minHeight: 0
   },
   chatSection: {
     gridColumn: 2,
