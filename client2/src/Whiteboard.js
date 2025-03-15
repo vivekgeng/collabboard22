@@ -304,8 +304,8 @@ const styles = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    height: 'calc(100vh - 80px)', // Full height minus header height
-    position: 'relative',
+    height: '100vh',
+    position: 'relative'
   },
   pageControls: {
     display: 'flex',
@@ -397,26 +397,21 @@ const styles = {
     color: 'white'
   },
   aiContainer: {
-    position: 'fixed',         // Fixed position relative to the viewport
-    bottom: 0,
-    left: 0,
-    right: 0,
+    borderTop: '2px solid #4F81E1',
+    backgroundColor: '#f8f9fa',
     height: '150px',
-    backgroundColor: '#fff',
-    borderTop: '1px solid #ddd',
-    overflowY: 'auto',
-    zIndex: 900,               // Should be below the header but above other content
+    minHeight: '150px'
   },
   aiHeader: {
     backgroundColor: '#4F81E1',
     color: 'white',
     padding: '10px',
-    fontWeight: 'bold',
+    fontWeight: 'bold'
   },
   aiContent: {
     padding: '15px',
-    height: 'calc(100% - 40px)', // Adjust based on the aiHeader height
     overflowY: 'auto',
+    height: '100%'
   },
   loadingContainer: {
     display: 'flex',
@@ -434,5 +429,3 @@ const styles = {
     animation: 'spin 1s linear infinite'
   }
 };
-
-export default React.memo(Whiteboard);

@@ -215,8 +215,8 @@ function HandGesture({
         hands.setOptions({
           maxNumHands: 1,
           modelComplexity: 0,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5
+          minDetectionConfidence: 0.7,
+          minTrackingConfidence: 0.7
         });
 
         const camera = new cam.Camera(videoElement, {
@@ -228,8 +228,8 @@ function HandGesture({
               console.error('Error sending frame:', err);
             }
           },
-          width: 640,
-          height: 480,
+          width: 480,
+          height: 360,
           facingMode: 'user'
         });
 
