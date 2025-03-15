@@ -160,23 +160,17 @@ const styles = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    height: '100vh',           // Full viewport height
-    overflow: 'hidden',         // Prevent scrolling
-    backgroundColor: '#f8f9fa',
+    height: '100vh',
+    backgroundColor: '#f8f9fa'
   },
   header: {
-    position: 'fixed',         // Fixes the header to the top
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '50px',            // Fixed height for the header
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '1rem 2rem',
     backgroundColor: '#ffffff',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    zIndex: 1000,              // Ensure the header is on top of other elements
+    zIndex: 100
   },
   title: {
     fontSize: '1.5rem',
@@ -233,35 +227,38 @@ const styles = {
     }
   },
   mainContent: {
-    marginTop: '80px',         // This pushes the main content below the header
     flex: 1,
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
-    gridTemplateRows: '1fr',
+    gridTemplateRows: '1fr auto',
     gap: '1rem',
     padding: '1rem',
-    height: 'calc(100vh - 80px)',  // Adjust height by subtracting header height
-    gridTemplateAreas: `"whiteboard sidebar"`,
+    height: 'calc(100vh - 80px)',
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
-      gridTemplateRows: '2fr 1fr',
-      gridTemplateAreas: `"whiteboard" "sidebar"`,
-    },
+      gridTemplateRows: 'auto auto auto'
+    }
   },
   whiteboardSection: {
-    gridArea: 'whiteboard',
+    gridRow: '1 / 3',
     display: 'flex',
     flexDirection: 'column',
-    height: '100%',
-    minHeight: 0 // Crucial for overflow control
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    overflow: 'hidden'
   },
   gestureSection: {
-    gridArea: 'sidebar',
+    gridColumn: 2,
+    gridRow: '1 / 2',
     display: 'flex',
     flexDirection: 'column',
-    height: '100%',
     gap: '1rem',
-    minHeight: 0
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    padding: '1rem',
+    overflow: 'hidden'
   },
   chatSection: {
     gridColumn: 2,
