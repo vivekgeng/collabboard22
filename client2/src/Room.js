@@ -169,7 +169,7 @@ const styles = {
     top: 0,
     left: 0,
     right: 0,
-    height: '80px',            // Fixed height for the header
+    height: '50px',            // Fixed height for the header
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
