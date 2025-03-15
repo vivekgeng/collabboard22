@@ -79,15 +79,19 @@ const validateDrawData = (data) => {
 
 const validateAIImage = (imageData) => {
   try {
-    const imageParts = imageData.split(',');
-    if (imageParts.length !== 2) return false;
+    if (!imageData?.includes('base64')) return false;
     
-    const base64Length = imageParts[1].length;
-    const sizeInBytes = 4 * Math.ceil(base64Length / 3) * 0.5624896334383812;
-    if (sizeInBytes < 50000) return false;
+    const [header, data] = imageData.split(',');
+    if (!header || !data) return false;
+    
+    const contentSize = Buffer.byteLength(data, 'base64');
+    if (contentSize < 1024 * 5) {
+      throw new Error(`Image too small: ${contentSize} bytes`);
+    }
     
     return true;
-  } catch {
+  } catch (error) {
+    logger.error(`Image validation failed: ${error.message}`);
     return false;
   }
 };
@@ -139,10 +143,9 @@ io.on('connection', (socket) => {
     }
 
     if (!validateAIImage(data.image)) {
-      logger.error('Invalid image data');
       return socket.emit('aiError', {
         roomId: data.roomId,
-        message: 'Please draw larger and clearer'
+        message: 'Please draw larger and clearer (minimum 5KB image required)'
       });
     }
 

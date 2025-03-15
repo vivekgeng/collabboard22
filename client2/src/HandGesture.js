@@ -171,7 +171,16 @@ function HandGesture({
       ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
       ctx.drawImage(drawingCanvasRef.current, 0, 0);
       
-      const imageData = tempCanvas.toDataURL('image/jpeg', 0.9);
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+      const imageData = tempCanvas.toDataURL('image/jpeg', 0.95);
+      
+      if (!imageData.startsWith('data:image/jpeg')) {
+        throw new Error('Invalid image encoding');
+      }
 
       socket?.emit('processWithAI', {
         roomId,
@@ -181,6 +190,10 @@ function HandGesture({
     } catch (error) {
       console.error('AI submission failed:', error);
       setIsLoadingAI(false);
+      socket?.emit('aiError', {
+        roomId,
+        message: 'Please draw clearer and try again'
+      });
     }
   }, [socket, roomId]);
 
