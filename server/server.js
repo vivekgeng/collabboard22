@@ -86,6 +86,22 @@ const validatePageIndex = (room, pageIndex) => {
 io.on('connection', (socket) => {
   logger.info(`New connection: ${socket.id}`);
 
+  socket.on('endStroke', (data) => {
+    if (!validateRoomId(data.roomId)) {
+      logger.warn(`Invalid room ID format in endStroke event from ${socket.id}`);
+      return;
+    }
+  
+    try {
+      io.to(data.roomId).emit('endStroke', {
+        strokeId: data.strokeId,
+        page: data.page
+      });
+    } catch (error) {
+      logger.error(`EndStroke event error: ${error.message}`);
+    }
+  });
+
   socket.on('joinRoom', (roomId) => {
     try {
       if (!validateRoomId(roomId)) {

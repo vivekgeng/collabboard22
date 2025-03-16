@@ -18,6 +18,8 @@ function Whiteboard({ socket, roomId, localId }) {
   const [eraserSize, setEraserSize] = useState(20);
   const isDrawing = useRef(false);
   const prevCoords = useRef(null);
+  const [currentStrokeId, setCurrentStrokeId] = useState(null);
+  const [receivedStrokes, setReceivedStrokes] = useState({});
 
   useEffect(() => {
     const handleAddPage = (newPage) => {
@@ -115,6 +117,160 @@ function Whiteboard({ socket, roomId, localId }) {
     });
   }, [socket, roomId]);
 
+  const startDrawing = (e) => {
+    isDrawing.current = true;
+    const coords = getCanvasCoordinates(e);
+    const ctx = contextRefs.current[activePage];
+    const strokeId = `${localId}-${Date.now()}`;
+    setCurrentStrokeId(strokeId);
+
+    ctx.beginPath();
+    ctx.moveTo(coords.x, coords.y);
+    prevCoords.current = coords;
+
+    socket?.emit('draw', {
+      roomId,
+      senderId: localId,
+      strokeId: strokeId,
+      x: coords.x,
+      y: coords.y,
+      prevX: coords.x,
+      prevY: coords.y,
+      color: isErasing ? '#FFFFFF' : color,
+      lineWidth: isErasing ? eraserSize : lineWidth,
+      page: activePage,
+      compositeOperation: isErasing ? 'destination-out' : 'source-over',
+      isNewStroke: true,
+      handGesture: false
+    });
+  };
+
+  const draw = (e) => {
+    if (!isDrawing.current || !currentStrokeId) return;
+    const coords = getCanvasCoordinates(e);
+    const ctx = contextRefs.current[activePage];
+    
+    ctx.lineTo(coords.x, coords.y);
+    ctx.stroke();
+
+    socket?.emit('draw', {
+      roomId,
+      senderId: localId,
+      strokeId: currentStrokeId,
+      x: coords.x,
+      y: coords.y,
+      prevX: prevCoords.current.x,
+      prevY: prevCoords.current.y,
+      color: isErasing ? '#FFFFFF' : color,
+      lineWidth: isErasing ? eraserSize : lineWidth,
+      page: activePage,
+      compositeOperation: isErasing ? 'destination-out' : 'source-over',
+      isNewStroke: false,
+      handGesture: false
+    });
+
+    prevCoords.current = coords;
+  };
+
+  const endDrawing = () => {
+    if (isDrawing.current && currentStrokeId) {
+      socket?.emit('endStroke', {
+        roomId,
+        strokeId: currentStrokeId,
+        page: activePage
+      });
+    }
+    
+    isDrawing.current = false;
+    const ctx = contextRefs.current[activePage];
+    ctx.closePath();
+    setCurrentStrokeId(null);
+    prevCoords.current = null;
+
+    const canvas = canvasRefs.current[activePage];
+    if (canvas) {
+      const imageData = canvas.toDataURL();
+      setPages(prev => prev.map((page, idx) => 
+        idx === activePage ? { ...page, imageData } : page
+      ));
+      socket?.emit('updatePageState', { 
+        roomId, 
+        pageId: pages[activePage].id,
+        imageData 
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleDraw = (data) => {
+      if (data.senderId === localId && !data.handGesture) return;
+      
+      const ctx = contextRefs.current[data.page];
+      if (!ctx) return;
+      
+      const originalSettings = {
+        strokeStyle: ctx.strokeStyle,
+        lineWidth: ctx.lineWidth,
+        composite: ctx.globalCompositeOperation
+      };
+      
+      ctx.strokeStyle = data.color;
+      ctx.lineWidth = data.lineWidth;
+      ctx.globalCompositeOperation = data.compositeOperation;
+      
+      if (data.isNewStroke) {
+        setReceivedStrokes(prev => ({
+          ...prev, 
+          [data.strokeId]: { 
+            x: data.x, 
+            y: data.y, 
+            page: data.page 
+          }
+        }));
+        
+        ctx.beginPath();
+        ctx.moveTo(data.x, data.y);
+      } else {
+        const stroke = receivedStrokes[data.strokeId];
+        if (stroke && stroke.page === data.page) {
+          ctx.beginPath();
+          ctx.moveTo(data.prevX, data.prevY);
+          ctx.lineTo(data.x, data.y);
+          ctx.stroke();
+          
+          setReceivedStrokes(prev => ({
+            ...prev,
+            [data.strokeId]: { 
+              ...prev[data.strokeId], 
+              x: data.x, 
+              y: data.y 
+            }
+          }));
+        }
+      }
+      
+      ctx.strokeStyle = originalSettings.strokeStyle;
+      ctx.lineWidth = originalSettings.lineWidth;
+      ctx.globalCompositeOperation = originalSettings.composite;
+    };
+    
+    const handleEndStroke = (data) => {
+      setReceivedStrokes(prev => {
+        const newStrokes = { ...prev };
+        delete newStrokes[data.strokeId];
+        return newStrokes;
+      });
+    };
+    
+    socket?.on('draw', handleDraw);
+    socket?.on('endStroke', handleEndStroke);
+    
+    return () => {
+      socket?.off('draw', handleDraw);
+      socket?.off('endStroke', handleEndStroke);
+    };
+  }, [socket, localId, pages, roomId, receivedStrokes]);
+
   const addPage = () => {
     const canvas = canvasRefs.current[activePage];
     const imageData = canvas.toDataURL();
@@ -175,96 +331,6 @@ function Whiteboard({ socket, roomId, localId }) {
       return !prev;
     });
   };
-
-  const startDrawing = (e) => {
-    isDrawing.current = true;
-    const coords = getCanvasCoordinates(e);
-    const ctx = contextRefs.current[activePage];
-    ctx.beginPath();
-    ctx.moveTo(coords.x, coords.y);
-    prevCoords.current = coords;
-  };
-
-  const draw = (e) => {
-    if (!isDrawing.current) return;
-    const coords = getCanvasCoordinates(e);
-    const ctx = contextRefs.current[activePage];
-    
-    ctx.lineTo(coords.x, coords.y);
-    ctx.stroke();
-
-    socket?.emit('draw', {
-      roomId,
-      senderId: localId,
-      x: coords.x,
-      y: coords.y,
-      prevX: prevCoords.current.x,
-      prevY: prevCoords.current.y,
-      color: isErasing ? '#FFFFFF' : color,
-      lineWidth: isErasing ? eraserSize : lineWidth,
-      page: activePage,
-      compositeOperation: isErasing ? 'destination-out' : 'source-over',
-      handGesture: false
-    });
-
-    prevCoords.current = coords;
-  };
-
-  const endDrawing = () => {
-    isDrawing.current = false;
-    const ctx = contextRefs.current[activePage];
-    ctx.closePath();
-    prevCoords.current = null;
-  };
-
-  useEffect(() => {
-    const handleDraw = (data) => {
-      if (data.senderId === localId && !data.handGesture) return;
-      
-      const ctx = contextRefs.current[data.page];
-      if (!ctx) return;
-
-      const originalSettings = {
-        strokeStyle: ctx.strokeStyle,
-        lineWidth: ctx.lineWidth,
-        composite: ctx.globalCompositeOperation
-      };
-
-      ctx.strokeStyle = data.color;
-      ctx.lineWidth = data.lineWidth;
-      ctx.globalCompositeOperation = data.compositeOperation;
-
-      ctx.beginPath();
-      ctx.moveTo(data.prevX, data.prevY);
-      ctx.lineTo(data.x, data.y);
-      ctx.stroke();
-
-      ctx.strokeStyle = originalSettings.strokeStyle;
-      ctx.lineWidth = originalSettings.lineWidth;
-      ctx.globalCompositeOperation = originalSettings.composite;
-
-      const canvas = canvasRefs.current[data.page];
-      if (canvas) {
-        const imageData = canvas.toDataURL();
-        setPages(prev => {
-          const updated = [...prev];
-          if (updated[data.page]) {
-            updated[data.page].imageData = imageData;
-          }
-          return updated;
-        });
-        socket?.emit('updatePageState', {
-          roomId,
-          pageId: pages[data.page].id,
-          imageData
-        });
-      }
-    };
-
-    socket?.on('draw', handleDraw);
-    return () => socket?.off('draw', handleDraw);
-  }, [socket, localId, pages, roomId]);
-
   const handleClear = () => {
     const ctx = contextRefs.current[activePage];
     ctx.clearRect(0, 0, 640, 480);
