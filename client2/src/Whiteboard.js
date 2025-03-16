@@ -3,7 +3,10 @@ import { jsPDF } from 'jspdf';
 import DOMPurify from 'dompurify';
 
 function Whiteboard({ socket, roomId, localId }) {
-  const [pages, setPages] = useState([{ id: Date.now() }]);
+  const [pages, setPages] = useState([{ 
+    id: Date.now(), 
+    imageData: ''
+  }]);
   const [activePage, setActivePage] = useState(0);
   const canvasRefs = useRef([]);
   const contextRefs = useRef([]);
@@ -50,22 +53,73 @@ function Whiteboard({ socket, roomId, localId }) {
   }, [socket]);
 
   useEffect(() => {
-    pages.forEach((_, index) => {
+    pages.forEach((page, index) => {
       const canvas = canvasRefs.current[index];
       if (canvas) {
-        canvas.width = 640;
-        canvas.height = 480;
+        if (!canvas.dataset.initialized) {
+          canvas.width = 640;
+          canvas.height = 480;
+          canvas.dataset.initialized = 'true';
+        }
+  
         const ctx = canvas.getContext('2d');
         ctx.lineCap = 'round';
         ctx.strokeStyle = color;
         ctx.lineWidth = lineWidth;
         contextRefs.current[index] = ctx;
+  
+        if (page.imageData) {
+          const img = new Image();
+          img.onload = () => {
+            ctx.clearRect(0, 0, 640, 480);
+            ctx.drawImage(img, 0, 0);
+          };
+          img.src = page.imageData;
+        }
       }
     });
-  }, [pages.length, color, lineWidth]);
+  }, [pages, color, lineWidth]);
+
+  useEffect(() => {
+    const saveCurrentState = () => {
+      const canvas = canvasRefs.current[activePage];
+      if (canvas) {
+        const imageData = canvas.toDataURL();
+        setPages(prev => prev.map((page, idx) => 
+          idx === activePage ? { ...page, imageData } : page
+        ));
+        socket?.emit('updatePageState', { 
+          roomId, 
+          pageId: pages[activePage].id,
+          imageData 
+        });
+      }
+    };
+    return () => saveCurrentState();
+  }, [activePage, socket, roomId]);
+
+  useEffect(() => {
+    const handleFullUpdate = (serverPages) => {
+      setPages(serverPages);
+      setActivePage(serverPages.length - 1);
+    };
+  
+    socket?.on('fullPageUpdate', handleFullUpdate);
+    return () => socket?.off('fullPageUpdate', handleFullUpdate);
+  }, [socket]);
+  
+  useEffect(() => {
+    socket?.emit('requestInitialState', roomId);
+    socket?.on('initialState', (serverPages) => {
+      setPages(serverPages);
+    });
+  }, [socket, roomId]);
 
   const addPage = () => {
-    socket?.emit('addPage', { roomId });
+    const canvas = canvasRefs.current[activePage];
+    const imageData = canvas.toDataURL();
+    const currentPageId = pages[activePage].id;
+    socket?.emit('addPage', { roomId, imageData, pageId: currentPageId });
   };
 
   const removePage = (pageId) => {
@@ -170,18 +224,46 @@ function Whiteboard({ socket, roomId, localId }) {
       const ctx = contextRefs.current[data.page];
       if (!ctx) return;
 
+      const originalSettings = {
+        strokeStyle: ctx.strokeStyle,
+        lineWidth: ctx.lineWidth,
+        composite: ctx.globalCompositeOperation
+      };
+
       ctx.strokeStyle = data.color;
       ctx.lineWidth = data.lineWidth;
       ctx.globalCompositeOperation = data.compositeOperation;
+
       ctx.beginPath();
       ctx.moveTo(data.prevX, data.prevY);
       ctx.lineTo(data.x, data.y);
       ctx.stroke();
+
+      ctx.strokeStyle = originalSettings.strokeStyle;
+      ctx.lineWidth = originalSettings.lineWidth;
+      ctx.globalCompositeOperation = originalSettings.composite;
+
+      const canvas = canvasRefs.current[data.page];
+      if (canvas) {
+        const imageData = canvas.toDataURL();
+        setPages(prev => {
+          const updated = [...prev];
+          if (updated[data.page]) {
+            updated[data.page].imageData = imageData;
+          }
+          return updated;
+        });
+        socket?.emit('updatePageState', {
+          roomId,
+          pageId: pages[data.page].id,
+          imageData
+        });
+      }
     };
 
     socket?.on('draw', handleDraw);
     return () => socket?.off('draw', handleDraw);
-  }, [socket, localId]);
+  }, [socket, localId, pages, roomId]);
 
   const handleClear = () => {
     const ctx = contextRefs.current[activePage];
@@ -230,7 +312,8 @@ function Whiteboard({ socket, roomId, localId }) {
           ref={el => (canvasRefs.current[index] = el)}
           style={{ 
             ...styles.canvas, 
-            display: index === activePage ? 'block' : 'none' 
+            visibility: index === activePage ? 'visible' : 'hidden',
+            position: index === activePage ? 'relative' : 'absolute'
           }}
           onMouseDown={startDrawing}
           onMouseMove={draw}
