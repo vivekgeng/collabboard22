@@ -93,6 +93,6 @@ Pull requests are welcome! Please fork the repo and create a new branch for your
 ---
 
 ## **📧 Contact**  
-For issues or inquiries, reach out at **gengajev43@example.com**.  
+For issues or inquiries, reach out at **gengajev43@gmail.com**.  
 
 🚀 **Enjoy collaborating with AI on CollabAI!** 🎨
