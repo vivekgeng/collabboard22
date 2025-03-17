@@ -12,6 +12,9 @@ CollabAI is a real-time, AI-powered collaborative whiteboard that allows multipl
 ✔️ **Chat Functionality** – Communicate in real time via built-in chat.  
 ✔️ **Save & Export** – Save your whiteboard drawings as PDFs.  
 
+![image](https://github.com/user-attachments/assets/616fdebb-c1e7-4b50-88bd-dc3ef12d0cc2)
+
+
 ---
 
 ## **🛠️ Tech Stack**  
