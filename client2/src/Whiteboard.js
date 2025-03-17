@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 import DOMPurify from 'dompurify';
 
-function Whiteboard({ socket, roomId, localId }) {
+function Whiteboard({ socket, roomId, localId, onActivePageChange }) {
   const [pages, setPages] = useState([{ 
     id: Date.now(), 
     imageData: ''
@@ -36,6 +36,11 @@ function Whiteboard({ socket, roomId, localId }) {
         setActivePage(prevActive => Math.min(prevActive, updatedPages.length - 1));
         return updatedPages;
       });
+    };
+
+    const changePage = (newPageIndex) => {
+      setActivePage(newPageIndex);
+      onActivePageChange?.(newPageIndex); // Call the parent handler
     };
 
     const handleAIResponse = (data) => {
@@ -203,8 +208,11 @@ function Whiteboard({ socket, roomId, localId }) {
 
   useEffect(() => {
     const handleDraw = (data) => {
+      console.log("Received draw event:", data);
+  // Check if handGesture flag is set correctly
+  console.log("Is hand gesture:", data.handGesture);
       if (data.senderId === localId && !data.handGesture) return;
-      
+  
       const ctx = contextRefs.current[data.page];
       if (!ctx) return;
       
@@ -216,7 +224,7 @@ function Whiteboard({ socket, roomId, localId }) {
       
       ctx.strokeStyle = data.color;
       ctx.lineWidth = data.lineWidth;
-      ctx.globalCompositeOperation = data.compositeOperation;
+      ctx.globalCompositeOperation = data.compositeOperation || 'source-over';
       
       if (data.isNewStroke) {
         setReceivedStrokes(prev => ({
@@ -249,6 +257,24 @@ function Whiteboard({ socket, roomId, localId }) {
         }
       }
       
+      // After drawing, save the canvas state
+      if (data.handGesture && data.page === activePage) {
+        const canvas = canvasRefs.current[data.page];
+        if (canvas) {
+          const imageData = canvas.toDataURL();
+          setPages(prev => prev.map((page, idx) => 
+            idx === data.page ? { ...page, imageData } : page
+          ));
+          
+          // Also emit this update to the server
+          socket?.emit('updatePageState', { 
+            roomId, 
+            pageId: pages[data.page].id,
+            imageData 
+          });
+        }
+      }
+      
       ctx.strokeStyle = originalSettings.strokeStyle;
       ctx.lineWidth = originalSettings.lineWidth;
       ctx.globalCompositeOperation = originalSettings.composite;
@@ -270,6 +296,39 @@ function Whiteboard({ socket, roomId, localId }) {
       socket?.off('endStroke', handleEndStroke);
     };
   }, [socket, localId, pages, roomId, receivedStrokes]);
+
+  useEffect(() => {
+    const handleClearCanvas = (data) => {
+      if (data.senderId === localId && !data.handGesture) return;
+      
+      const ctx = contextRefs.current[activePage];
+      if (ctx) {
+        ctx.clearRect(0, 0, 640, 480);
+        
+        // Update the page state
+        const canvas = canvasRefs.current[activePage];
+        if (canvas) {
+          const imageData = canvas.toDataURL();
+          setPages(prev => prev.map((page, idx) => 
+            idx === activePage ? { ...page, imageData } : page
+          ));
+          
+          // Sync with server
+          socket?.emit('updatePageState', { 
+            roomId, 
+            pageId: pages[activePage].id,
+            imageData 
+          });
+        }
+      }
+    };
+    
+    socket?.on('clearCanvas', handleClearCanvas);
+    
+    return () => {
+      socket?.off('clearCanvas', handleClearCanvas);
+    };
+  }, [socket, localId, activePage, pages, roomId]);
 
   const addPage = () => {
     const canvas = canvasRefs.current[activePage];

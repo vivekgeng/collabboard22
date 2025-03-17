@@ -9,14 +9,20 @@ import HandGesture from './HandGesture';
 const SERVER_URL = 'https://collabboard22.onrender.com';
 
 function Room() {
+
   const { roomId } = useParams();
-  const navigate = useNavigate();
+const navigate = useNavigate();
+const handleActivePageChange = (newPageIndex) => {
+  setActivePage(newPageIndex);
+};
   const [socket, setSocket] = useState(null);
   const [localId, setLocalId] = useState(null);
   const [handGestureMode, setHandGestureMode] = useState(false);
   const [gestureStatus, setGestureStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(false);
+  const [activePage, setActivePage] = useState(0);
+
 
   useEffect(() => {
     const newSocket = io(SERVER_URL, {
@@ -69,6 +75,8 @@ function Room() {
     }
   }, [socket, roomId, localId]);
 
+
+
   if (connectionError) {
     return (
       <div style={styles.errorContainer}>
@@ -89,6 +97,7 @@ function Room() {
       </div>
     );
   }
+
 
   return (
     <div style={styles.container}>
@@ -111,10 +120,11 @@ function Room() {
           </button>
         </div>
       </header>
+      
 
       <div style={styles.mainContent}>
         <div style={styles.whiteboardSection}>
-          <Whiteboard socket={socket} roomId={roomId} localId={localId} />
+          <Whiteboard socket={socket} roomId={roomId} localId={localId} onActivePageChange={handleActivePageChange}/>
         </div>
         
         {handGestureMode && (
@@ -122,8 +132,11 @@ function Room() {
             <HandGesture 
               socket={socket} 
               roomId={roomId} 
+              activePage={activePage}
               onGestureDetected={handleGesture} 
               localId={localId} 
+              color="#FF0000" // Default color
+              lineWidth={2}
             />
             <div style={styles.gestureStatus}>
               Active Gesture: <strong>{gestureStatus || 'None'}</strong>

@@ -100,19 +100,19 @@ function HandGesture({
 
   const processDrawing = useCallback((landmarks, gesture) => {
     if (!landmarks || !landmarks[8]) return;
-
+  
     const canvas = drawingCanvasRef.current;
     if (!canvas) return;
-
+  
     const rawX = landmarks[8].x;
     const rawY = landmarks[8].y;
     if (rawX == null || rawY == null) return;
-
+  
     const canvasX = canvas.width - (rawX * canvas.width);
     const canvasY = rawY * canvas.height;
     const drawCtx = canvas.getContext('2d');
     const MIN_DISTANCE = 2;
-
+  
     switch (gesture) {
       case 'draw':
         animationFrameRef.current = requestAnimationFrame(() => {
@@ -122,45 +122,70 @@ function HandGesture({
             drawCtx.moveTo(canvasX, canvasY);
             drawCtx.strokeStyle = color;
             drawCtx.lineWidth = lineWidth;
+            
+            // Generate a unique stroke ID
+            const strokeId = `${localId}-gesture-${Date.now()}`;
+            
             socket?.emit('draw', {
               roomId,
               senderId: localId,
-              page: activePage,
-              prevX: canvasX,
-              prevY: canvasY,
+              strokeId: strokeId,
               x: canvasX,
               y: canvasY,
+              prevX: canvasX,
+              prevY: canvasY,
               color,
               lineWidth,
+              page: activePage,
+              compositeOperation: 'source-over',
+              isNewStroke: true,
               handGesture: true
             });
             return;
           }
-
+  
           const dx = canvasX - prevCoords.current.x;
           const dy = canvasY - prevCoords.current.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
           if (distance < MIN_DISTANCE) return;
-
+  
           drawCtx.lineTo(canvasX, canvasY);
           drawCtx.stroke();
+          
           socket?.emit('draw', {
             roomId,
             senderId: localId,
-            page: activePage,
+            strokeId: prevCoords.current.strokeId || `${localId}-gesture-${Date.now()}`,
             prevX: prevCoords.current.x,
             prevY: prevCoords.current.y,
             x: canvasX,
             y: canvasY,
             color,
             lineWidth,
+            page: activePage,
+            compositeOperation: 'source-over',
+            isNewStroke: false,
             handGesture: true
           });
-          prevCoords.current = { x: canvasX, y: canvasY };
+          
+          prevCoords.current = { 
+            x: canvasX, 
+            y: canvasY, 
+            strokeId: prevCoords.current.strokeId || `${localId}-gesture-${Date.now()}`
+          };
         });
         break;
       case 'stop':
         drawCtx.closePath();
+        
+        if (prevCoords.current && prevCoords.current.strokeId) {
+          socket?.emit('endStroke', {
+            roomId,
+            strokeId: prevCoords.current.strokeId,
+            page: activePage
+          });
+        }
+        
         prevCoords.current = null;
         break;
       default:
