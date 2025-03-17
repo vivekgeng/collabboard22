@@ -1,6 +1,6 @@
-# **CollabAI - AI-Powered Collaborative Whiteboard**  
+# **CollabAI - AI-Powered Collaborative Whiteboard**
 
-CollabAI is a real-time, AI-powered collaborative whiteboard that allows multiple users to draw, chat, and interact using hand gestures. It integrates Google Gemini AI to analyze handwritten math problems and provide step-by-step solutions.  
+CollabAI is a real-time, AI-powered collaborative whiteboard that allows multiple users to draw, chat, and interact using hand gestures. It integrates Google Gemini AI to analyze handwritten math problems and provide step-by-step solutions. 
 
 ---
 
@@ -12,7 +12,7 @@ CollabAI is a real-time, AI-powered collaborative whiteboard that allows multipl
 ✔️ **Chat Functionality** – Communicate in real time via built-in chat.  
 ✔️ **Save & Export** – Save your whiteboard drawings as PDFs.  
 
-![image](https://github.com/user-attachments/assets/616fdebb-c1e7-4b50-88bd-dc3ef12d0cc2)
+![image](https://github.com/user-attachments/assets/c229628f-5366-45fa-9f0e-e4b755e68457)
 
 
 ---
