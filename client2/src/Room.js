@@ -1,35 +1,46 @@
-// Room.js
-import React, { useEffect, useState, useCallback } from 'react';
-import io from 'socket.io-client';
-import { useParams, useNavigate } from 'react-router-dom';
-import Whiteboard from './Whiteboard';
-import Chat from './Chat';
-import HandGesture from './HandGesture';
+import React, { useEffect, useState, useCallback } from "react";
+import io from "socket.io-client";
+import { useParams, useNavigate } from "react-router-dom";
+import Whiteboard from "./Whiteboard";
+import Chat from "./Chat";
+import HandGesture from "./HandGesture";
 
-const SERVER_URL = 'https://collabboard22.onrender.com';
+const SERVER_URL = "http://localhost:5000/";
+
+const Popup = ({ message, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed  top-4 left-1/2 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg">
+      {message}
+    </div>
+  );
+};
 
 function Room() {
-
   const { roomId } = useParams();
-const navigate = useNavigate();
-const handleActivePageChange = (newPageIndex) => {
-  setActivePage(newPageIndex);
-};
+  const navigate = useNavigate();
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [showPopup, setShowPopup] = useState(false);
   const [socket, setSocket] = useState(null);
   const [localId, setLocalId] = useState(null);
   const [handGestureMode, setHandGestureMode] = useState(false);
-  const [gestureStatus, setGestureStatus] = useState('');
+  const [gestureStatus, setGestureStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(false);
   const [activePage, setActivePage] = useState(0);
 
-
   useEffect(() => {
     const newSocket = io(SERVER_URL, {
-      transports: ['websocket'],
+      transports: ["websocket"],
       upgrade: false,
       reconnectionAttempts: 3,
-      timeout: 5000
+      timeout: 5000,
     });
 
     const connectionTimer = setTimeout(() => {
@@ -39,19 +50,24 @@ const handleActivePageChange = (newPageIndex) => {
       }
     }, 10000);
 
-    newSocket.on('connect', () => {
+    newSocket.on("connect", () => {
       clearTimeout(connectionTimer);
       setLocalId(newSocket.id);
       setLoading(false);
       setConnectionError(false);
     });
 
-    newSocket.on('connect_error', () => {
+    newSocket.on("totalUsers", (data) => {
+      setTotalUsers(data.totalUsers);
+      setShowPopup(true); // Show popup when a new user joins
+    });
+
+    newSocket.on("connect_error", () => {
       setConnectionError(true);
       setLoading(false);
     });
 
-    newSocket.emit('joinRoom', roomId);
+    newSocket.emit("joinRoom", roomId);
     setSocket(newSocket);
 
     return () => {
@@ -61,28 +77,32 @@ const handleActivePageChange = (newPageIndex) => {
   }, [roomId]);
 
   const leaveRoom = useCallback(() => {
-    navigate('/');
+    navigate("/");
   }, [navigate]);
 
   const toggleHandGestureMode = useCallback(() => {
-    setHandGestureMode(prev => !prev);
+    setHandGestureMode((prev) => !prev);
   }, []);
 
-  const handleGesture = useCallback((gesture) => {
-    setGestureStatus(gesture);
-    if (gesture === 'clear' && socket) {
-      socket.emit('clearCanvas', { roomId, senderId: localId });
-    }
-  }, [socket, roomId, localId]);
-
-
+  const handleGesture = useCallback(
+    (gesture) => {
+      setGestureStatus(gesture);
+      if (gesture === "clear" && socket) {
+        socket.emit("clearCanvas", { roomId, senderId: localId });
+      }
+    },
+    [socket, roomId, localId]
+  );
 
   if (connectionError) {
     return (
-      <div style={styles.errorContainer}>
-        <h2>Connection Failed</h2>
+      <div className="flex flex-col items-center justify-center h-screen">
+        <h2 className="text-red-600 text-xl">Connection Failed</h2>
         <p>Unable to connect to the server. Please try again later.</p>
-        <button style={styles.retryButton} onClick={() => window.location.reload()}>
+        <button
+          className="bg-blue-500 text-white px-4 py-2 rounded-md mt-4"
+          onClick={() => window.location.reload()}
+        >
           Retry Connection
         </button>
       </div>
@@ -91,231 +111,62 @@ const handleActivePageChange = (newPageIndex) => {
 
   if (loading) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.spinner}></div>
+      <div className="flex flex-col items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
         <p>Connecting to room {roomId}...</p>
       </div>
     );
   }
 
-
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h1 style={styles.title}>CollabAI - Room: {roomId}</h1>
-        <div style={styles.buttonGroup}>
-          <button 
-            onClick={toggleHandGestureMode} 
-            style={handGestureMode ? styles.activeGestureButton : styles.handGestureButton}
-            aria-label={handGestureMode ? 'Disable hand gestures' : 'Enable hand gestures'}
+    <div className="flex flex-col h-screen bg-gray-100">
+      <header className="flex justify-between items-center p-4 bg-white shadow-md">
+        <h1 className="text-lg font-bold text-gray-700">CollabAI - Room: {roomId} ({totalUsers} users)</h1>
+        <div className="flex space-x-2">
+          <button
+            onClick={toggleHandGestureMode}
+            className={`px-4 py-2 rounded-md ${
+              handGestureMode ? "bg-red-500 text-white" : "bg-green-500 text-white"
+            }`}
           >
-            {handGestureMode ? '✋ Disable Gestures' : '👆 Hand Gestures'}
+            {handGestureMode ? "✋ Disable Gestures" : "👆 Hand Gestures"}
           </button>
-          <button 
-            onClick={leaveRoom} 
-            style={styles.leaveButton}
-            aria-label="Leave collaboration room"
-          >
+          <button onClick={leaveRoom} className="bg-blue-500 text-white px-4 py-2 rounded-md">
             🚪 Leave Room
           </button>
         </div>
       </header>
-      
 
-      <div style={styles.mainContent}>
-        <div style={styles.whiteboardSection}>
-          <Whiteboard socket={socket} roomId={roomId} localId={localId} onActivePageChange={handleActivePageChange}/>
+      <div className="flex flex-1 p-4">
+        <div className="flex-1 bg-white rounded-lg shadow-md p-4">
+          <Whiteboard socket={socket} roomId={roomId} localId={localId} onActivePageChange={setActivePage} />
         </div>
-        
+
         {handGestureMode && (
-          <div style={styles.gestureSection}>
-            <HandGesture 
-              socket={socket} 
-              roomId={roomId} 
+          <div className="ml-4 w-1/4 bg-white rounded-lg shadow-md p-4">
+            <HandGesture
+              socket={socket}
+              roomId={roomId}
               activePage={activePage}
-              onGestureDetected={handleGesture} 
-              localId={localId} 
-              color="#FF0000" // Default color
+              onGestureDetected={handleGesture}
+              localId={localId}
+              color="#FF0000"
               lineWidth={2}
             />
-            <div style={styles.gestureStatus}>
-              Active Gesture: <strong>{gestureStatus || 'None'}</strong>
+            <div className="mt-2 p-2 bg-gray-200 text-center rounded-md">
+              Active Gesture: <strong>{gestureStatus || "None"}</strong>
             </div>
           </div>
         )}
 
-        <div style={styles.chatSection}>
+        <div className="ml-4 w-1/4 bg-white rounded-lg shadow-md p-4">
           <Chat socket={socket} roomId={roomId} />
         </div>
       </div>
+
+      {showPopup && <Popup message=" User joined!" onClose={() => setShowPopup(false)} />}
     </div>
   );
 }
-
-const styles = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100vh',
-    backgroundColor: '#f8f9fa'
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '1rem 2rem',
-    backgroundColor: '#ffffff',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    zIndex: 100
-  },
-  title: {
-    fontSize: '1.5rem',
-    margin: 0,
-    color: '#2c3e50'
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '1rem'
-  },
-  handGestureButton: {
-    backgroundColor: '#28a745',
-    color: 'white',
-    border: 'none',
-    padding: '0.5rem 1rem',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#218838'
-    }
-  },
-  activeGestureButton: {
-    backgroundColor: '#dc3545',
-    color: 'white',
-    border: 'none',
-    padding: '0.5rem 1rem',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#c82333'
-    }
-  },
-  leaveButton: {
-    backgroundColor: '#4F81E1',
-    color: 'white',
-    border: 'none',
-    padding: '0.5rem 1rem',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#3a6db7'
-    }
-  },
-  mainContent: {
-    flex: 1,
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
-    gridTemplateRows: '1fr auto',
-    gap: '1rem',
-    padding: '1rem',
-    height: 'calc(100vh - 80px)',
-    '@media (max-width: 768px)': {
-      gridTemplateColumns: '1fr',
-      gridTemplateRows: 'auto auto auto'
-    }
-  },
-  whiteboardSection: {
-    gridRow: '1 / 3',
-    display: 'flex',
-    flexDirection: 'column',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    overflow: 'hidden'
-  },
-  gestureSection: {
-    gridColumn: 2,
-    gridRow: '1 / 2',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    padding: '1rem'
-  },
-  chatSection: {
-    gridColumn: 2,
-    gridRow: '2 / 3',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    overflow: 'hidden'
-  },
-  gestureStatus: {
-    padding: '0.5rem',
-    backgroundColor: '#e9ecef',
-    borderRadius: '4px',
-    textAlign: 'center',
-    fontSize: '0.9rem'
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100vh',
-    gap: '1rem'
-  },
-  spinner: {
-    width: '50px',
-    height: '50px',
-    border: '4px solid #f3f3f3',
-    borderTop: '4px solid #3498db',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite'
-  },
-  errorContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100vh',
-    gap: '1rem',
-    textAlign: 'center'
-  },
-  retryButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#4F81E1',
-    color: 'white',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer'
-  },
-  gestureSection: {
-  gridColumn: 2,
-  gridRow: '1 / 2',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1rem',
-  backgroundColor: 'white',
-  borderRadius: '8px',
-  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-  padding: '1rem',
-  overflow: 'hidden',
-  aspectRatio: '4/3'  // Add this line
-  }
-};
 
 export default React.memo(Room);
