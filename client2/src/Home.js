@@ -18,7 +18,7 @@ function Home() {
 
   return (
     <div style={styles.container}>
-      <h1>Welcome to CollabAI</h1>
+      <h1>Welcome to White Virtual Board</h1>
       <p>Join or create collaboration rooms to start working with your team..</p>
       <div style={styles.joinContainer}>
         <input
